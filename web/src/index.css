@@ -1,0 +1,372 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Calzy design system — mirrors ios-calzy/Calzy/Utilities/Theme.swift.
+   All colors are HSL. */
+
+@layer base {
+  :root {
+    --background: 260 17.6% 96.7%;
+    --foreground: 240 4.3% 4.5%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 4.3% 4.5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 4.3% 4.5%;
+
+    --primary: 240 4.3% 4.5%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 13% 95.5%;
+    --secondary-foreground: 240 4.3% 4.5%;
+
+    --muted: 240 13% 95.5%;
+    --muted-foreground: 240 3.2% 43.3%;
+
+    --accent: 240 13% 95.5%;
+    --accent-foreground: 240 4.3% 4.5%;
+
+    --destructive: 353 100% 67.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 8% 90%;
+    --input: 240 8% 90%;
+    --ring: 240 4.3% 4.5%;
+
+    --radius: 0.75rem;
+
+    /* Calzy tokens */
+    --ink: 240 4.3% 4.5%;
+    --ink-soft: 240 3.2% 43.3%;
+    --ink-faint: 240 4.2% 67.3%;
+    --well: 240 13% 95.5%;
+    --flame: 18 100% 58.6%;
+    --water: 209 100% 61.2%;
+    --protein: 353 100% 67.6%;
+    --carbs: 218 100% 64.9%;
+    --fat: 37 91.3% 55.1%;
+    --mint: 147 60.5% 46.7%;
+    --plum: 271 81.7% 67.8%;
+
+    --mist-lavender: 262 62.8% 91.6%;
+    --mist-peach: 4 100% 93.9%;
+    --mist-sky: 218 100% 93.1%;
+    --mist-apricot: 25 100% 93.1%;
+    --mist-sage: 155 43% 90.6%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Pin the document to the visual viewport. Mobile Safari otherwise resizes
+     the page as the URL bar collapses, and rubber-bands the whole app. */
+  body {
+    @apply bg-background text-foreground;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  input,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  /* Text entry stays selectable. */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Momentum scrolling inside the app's own scroll panes. */
+  .no-scrollbar,
+  [class*="overflow-y-auto"],
+  [class*="overflow-x-auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  /* Ambient app background — soft lavender / peach mist over off-white.
+     Painted onto a pinned pseudo-element rather than via
+     `background-attachment: fixed`, which iOS Safari does not honour and
+     which forces a repaint of the whole gradient stack on every frame. */
+  .calzy-backdrop {
+    position: relative;
+    isolation: isolate;
+    background-color: hsl(var(--background));
+  }
+
+  .calzy-backdrop::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image:
+      radial-gradient(
+        70% 42% at 2% -2%,
+        hsl(var(--mist-lavender) / 0.95),
+        transparent 70%
+      ),
+      radial-gradient(
+        64% 38% at 102% 4%,
+        hsl(var(--mist-peach) / 0.9),
+        transparent 70%
+      ),
+      radial-gradient(
+        62% 36% at -14% 46%,
+        hsl(var(--mist-sky) / 0.75),
+        transparent 70%
+      ),
+      radial-gradient(
+        62% 36% at 114% 60%,
+        hsl(var(--mist-apricot) / 0.65),
+        transparent 70%
+      ),
+      radial-gradient(
+        70% 40% at 32% 104%,
+        hsl(var(--mist-lavender) / 0.7),
+        transparent 70%
+      ),
+      radial-gradient(
+        50% 30% at 96% 98%,
+        hsl(var(--mist-sage) / 0.45),
+        transparent 70%
+      );
+  }
+
+  /* Frosted card container — CardBackground in Theme.swift. */
+  .calzy-card {
+    background: rgb(255 255 255 / 0.78);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.65);
+    box-shadow: 0 8px 18px rgb(0 0 0 / 0.05);
+  }
+
+  .calzy-glass {
+    background: rgb(255 255 255 / 0.82);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.1);
+  }
+
+  .calzy-hairline {
+    background-color: rgb(0 0 0 / 0.06);
+  }
+
+  /* Press-down feedback — PressableButtonStyle. */
+  .pressable {
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .pressable:active {
+    transform: scale(0.955);
+    opacity: 0.9;
+  }
+
+  /* Quick-action strip cell — presses tint and settle the individual cell
+     instead of the whole strip. */
+  .quick-cell {
+    background-color: transparent;
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 180ms ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .quick-cell:active {
+    transform: scale(0.93);
+    background-color: color-mix(in srgb, var(--cell-tint) 9%, transparent);
+  }
+
+  .metric {
+    font-family:
+      "Nunito",
+      "SF Pro Rounded",
+      -apple-system,
+      system-ui,
+      sans-serif;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+}
+
+@layer utilities {
+  /* Native-feeling range slider tinted per-context via --slider-tint. */
+  .calzy-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 26px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .calzy-slider::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--slider-tint, hsl(var(--ink))) var(--slider-fill, 50%),
+      rgb(0 0 0 / 0.08) var(--slider-fill, 50%)
+    );
+  }
+
+  .calzy-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    margin-top: -9.5px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.14),
+      0 4px 12px rgb(0 0 0 / 0.14);
+    transition: transform 140ms ease;
+  }
+
+  .calzy-slider:active::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+
+  .calzy-slider::-moz-range-track {
+    height: 5px;
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.08);
+  }
+
+  .calzy-slider::-moz-range-progress {
+    height: 5px;
+    border-radius: 999px;
+    background: var(--slider-tint, hsl(var(--ink)));
+  }
+
+  .calzy-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.14),
+      0 4px 12px rgb(0 0 0 / 0.14);
+  }
+
+  /* Safe-area insets. Each class bakes the inset into a single padding
+     declaration so it can't collide with a Tailwind padding utility. */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Page headers clear the status bar / notch. */
+  .page-top {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+
+  .page-top-lg {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  }
+
+  /* Scroll panes clear the floating tab bar and the home indicator. */
+  .page-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 152px);
+  }
+
+  /* Floating tab bar sits above the home indicator. */
+  .tabbar-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  /* Sheet chrome. */
+  .sheet-top {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+
+  .sheet-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  }
+
+  /* Camera overlay controls. */
+  .camera-top {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+
+  .camera-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  }
+
+  /* Gentle idle drift for the empty-state ghost card stack. */
+  .calzy-float {
+    animation: calzy-float 2.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes calzy-float {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-3px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .calzy-float {
+      animation: none;
+    }
+  }
+}
