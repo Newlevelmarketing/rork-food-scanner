@@ -62,7 +62,17 @@ function endpoint(): string | null {
   return `${normalized}/v2/vercel/v1/chat/completions`;
 }
 
-export const isAIConfigured: boolean = endpoint() !== null;
+/**
+ * Analysis needs a gateway URL *and* a key.
+ *
+ * `toolkitURL` falls back to the public gateway, so a build with no key would
+ * otherwise report itself configured and then fail every request with a 401 —
+ * surfacing "AI features are currently unavailable. Please reload the page." for
+ * something no reload can fix. Requiring the key here keeps the honest
+ * `notConfigured` message ("AI scanning isn't available in this build yet") for
+ * the case it was written to describe.
+ */
+export const isAIConfigured: boolean = endpoint() !== null && toolkitKey !== "";
 
 function systemPrompt(jester: boolean, languageName: string): string {
   const base = [
@@ -114,7 +124,9 @@ async function send(
   languageName: string,
 ): Promise<AnalysisResult> {
   const url = endpoint();
-  if (!url) throw new NutritionAIError("notConfigured");
+  // Bail before the network call rather than spending a request to learn the
+  // build has no credentials.
+  if (!url || !isAIConfigured) throw new NutritionAIError("notConfigured");
 
   let response: Response;
   try {
