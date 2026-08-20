@@ -1,0 +1,231 @@
+# Decision Log
+
+Record important decisions here so the project does not lose its reasoning over time.
+
+## How to Use
+
+Every important decision should include:
+
+- Date
+- Decision
+- Context
+- Options considered
+- Why this decision was made
+- Impact
+- Reversal condition, if any
+
+---
+
+## Decisions
+
+### 2026-08-20 — Adopt the Project Brain for this existing app
+
+**Decision:** Manage this existing application through a spec-driven Project Brain: context
+files in `context/` as the source of truth, one unit spec per change, and Claude Code
+implementing only against a written spec.
+
+**Context:** The application already exists and was built without this system. Work on it
+needs to become reviewable and resumable, and AI agents need a stable memory of what the
+project is, how it is built, and what must never break.
+
+**Options Considered:**
+
+1. Keep working ad hoc, prompting per task with no persistent context.
+2. Rely on a single `CLAUDE.md` with no separate context files.
+3. Adopt the full Project Brain, filled from the existing codebase.
+
+**Reasoning:** Option 1 loses reasoning between sessions and produces scope creep. Option 2
+collapses under its own weight once architecture, strategy, brand, and progress all compete
+for the same file. Option 3 separates concerns, keeps the always-loaded entry point small,
+and makes each unit of work independently reviewable.
+
+**Impact:** All feature work now requires a unit spec in `context/feature-specs/`. Context
+files must be updated in the same session as any change that alters architecture, storage,
+conventions, scope, or brand.
+
+**Reversal Condition:** If the overhead of maintaining the brain exceeds the cost of the
+rework it prevents — for example on a project that becomes a short-lived throwaway — drop
+back to a single `CLAUDE.md`.
+
+---
+
+### 2026-08-20 — Host the legal documents on the web build at `/privacy` and `/terms`
+
+**Decision:** Port the privacy policy and terms from `ios-calzy/.../Utilities/Legal.swift` into
+`web/src/lib/legal.ts`, render them at the public routes `/privacy` and `/terms`, and point the
+web Settings rows at those routes.
+
+**Context:** Two problems, one fix. First, `web/src/pages/Settings.tsx:192-194` linked to
+`https://rork.app/terms` and `https://rork.app/privacy` — the **toolchain vendor's** legal pages,
+which do not describe ModernBody's data handling. Second, App Store Connect and the Play Console
+both require a reachable Privacy Policy URL as app metadata, and `Legal.swift:18,21` ships with
+`privacyPolicyURL` and `termsOfUseURL` empty. The iOS app already contains excellent policy text;
+it just had nowhere public to live.
+
+**Options Considered:**
+
+1. Write standalone static HTML pages and host them separately.
+2. Publish the policy on a marketing site that does not exist yet.
+3. Serve the documents from the web build, which already deploys, at stable routes.
+
+**Reasoning:** Option 3 needs no new infrastructure and no new domain, and it keeps one source of
+truth: the in-app Settings rows and the public URL render the same module, so they cannot drift.
+Deploying the web build produces the URL the stores require as a side effect.
+
+**Impact:** `/privacy` and `/terms` are now public, stable URLs. **Their paths must not change** —
+they get submitted to Apple and Google. Once the web build is deployed, paste the deployed URLs
+into `Legal.swift:18,21` so the iOS app offers web mirrors too.
+
+**Two deliberate deviations from the Swift original,** both for accuracy, both needing the
+human's sign-off as legal copy:
+
+1. "your iPhone" → "your device", since these pages now serve web and Android as well.
+2. One sentence added to section 1 stating that web data lives in browser local storage and is
+   erased by clearing site data. The Swift text describes an app sandbox, which is not accurate
+   for the web build.
+
+**Reversal Condition:** A dedicated marketing site takes over as the canonical home for the
+documents.
+
+---
+
+### 2026-08-20 — Flagged, not decided: the web and Android paywall contradicts the Terms
+
+**Status:** **Open — needs a human decision.** Recorded here because publishing `/terms` made the
+contradiction visible inside a single build.
+
+**The contradiction:** `/terms` section 7 now states ModernBody "contains no in-app purchases and
+no subscriptions" — true on iOS. But `web/src/pages/Settings.tsx:157-189` renders a SUBSCRIPTION
+section opening `features/Paywall.tsx`, which advertises "$9.99 Monthly", "$59.99 Yearly",
+"SAVE 50%" and "Start 3-day free trial". Android ships the equivalent `PaywallSheet.kt`.
+
+**What the paywall actually does:** `Paywall.tsx:52` flips `store.profile.isPro`. Nothing else.
+`isPro` is read in exactly three places, all of them cosmetic badge labels — it gates no feature
+anywhere in the codebase.
+
+**All four advertised perks are already free:**
+
+| Advertised perk | Reality |
+| --- | --- |
+| "Unlimited AI scans" | No scan metering exists anywhere |
+| "Deep progress insights" | The Progress tab is identical regardless of `isPro` |
+| "Jester Mode" | Has its own free toggle in Settings, directly above the upgrade row |
+| "Apple Health sync" | `profile.healthSynced` is never written by any code |
+
+**Why it matters:** Apple's 2026-08-10 message explicitly cites Guideline 3.1.2 on subscription
+information. iOS has no paywall, so this does not block the current submission. But if this UI
+ever reaches iOS without real StoreKit products behind it, it is an immediate Guideline 3.1.1
+rejection — and on the shipping web build it is already misleading regardless of any store rule.
+
+**Options:** (a) remove the paywall from web and Android, matching iOS and the Terms;
+(b) keep it but strip prices and the trial CTA, presenting it honestly as forthcoming;
+(c) build real billing and make `isPro` gate something.
+
+**Not actioned.** Removing or redesigning a monetisation surface is a product decision, not a
+cleanup. Awaiting the human's choice.
+
+---
+
+## Decisions Reconstructed From the Code
+
+> These were made before the brain existed. The **Decision** and **Impact** lines are facts read
+> from the repository. The **Reasoning** lines are *inferred* — they are this agent's best
+> reconstruction, not a record of what anyone actually thought. Correct or confirm them.
+
+### [pre-2026-08-20] — Ship three hand-mirrored native implementations
+
+**Decision:** Build the same product three times — SwiftUI, Jetpack Compose, and React — rather
+than once in a cross-platform framework.
+
+**Context:** `rork.json` declares three apps from one Rork project. `web/src/lib/types.ts:1` and
+`web/src/index.css:7` both declare themselves mirrors of the iOS sources, making iOS the
+reference implementation.
+
+**Reasoning (INFERRED):** Rork generates native code per platform; fully native output avoids
+bridge overhead and gives each platform its real UI toolkit.
+
+**Impact:** Every feature is built three times. Domain models, theme tokens, AI prompts, and
+nutrition math each exist in three places and can drift silently.
+
+**Reversal Condition:** If parity cost exceeds the value of native feel — or if only one
+platform actually ships — collapse to a single implementation.
+
+---
+
+### [pre-2026-08-20] — No backend, no accounts, device-local storage only
+
+**Decision:** Persist all user data on the device. No server, no login, no sync.
+
+**Context:** `web/src/store/AppStore.tsx:37` writes the entire `AppData` object to one
+`localStorage` key, `calzy-data-v1`. There is no auth code and no API surface anywhere in the
+repo.
+
+**Reasoning (INFERRED):** Removes hosting cost, privacy exposure, and signup friction. A food
+diary is single-user and single-device by nature.
+
+**Impact:** No sync, no backup, no multi-device. Clearing site data destroys all history.
+Storage is quota-bound and photos share the same key.
+
+**Reversal Condition:** Users asking for multi-device or backup, or the storage quota becoming a
+real support burden.
+
+---
+
+### [pre-2026-08-20] — Call the AI gateway directly from the client
+
+**Decision:** Each app calls `toolkit.rork.com` directly, authenticating with
+`EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY` sent as a `Bearer` token from the client.
+
+**Context:** `web/src/lib/ai.ts:56-57,121-136`; `ios-calzy/.../NutritionAI.swift:184`;
+`android/.../AiService.kt:80-81`. `web/vite.config.ts:23` deliberately exposes `EXPO_PUBLIC_*`
+to the bundle.
+
+**Reasoning (INFERRED):** It is the only option consistent with having no backend — Rork's
+toolkit is designed to be called from generated client apps.
+
+**Impact:** The credential ships inside the web bundle and both app binaries and can be
+extracted by any user. It is a follow-on consequence of the no-backend decision, not an
+independent one.
+
+**Reversal Condition:** Any evidence of key abuse, or the moment a backend exists for another
+reason. **This decision is flagged for review — see Known Debt in `architecture.md`.**
+
+---
+
+### [pre-2026-08-20] — Rork as the generator of record
+
+**Decision:** Author the app in Rork and export it to this repository.
+
+**Context:** The entire history is two commits: `5a7810a Initial commit` and
+`4db8802 New version from Rork`. `Config.swift` and `Config.kt` are Rork-generated and
+gitignored, so the native apps do not build from a clean clone.
+
+**Reasoning (INFERRED):** Rork produced the three implementations; the repo is an export target
+rather than the primary editing surface.
+
+**Impact:** **Unresolved and blocking.** If Rork remains the source of truth, hand edits made in
+this repository are destroyed by the next export, and the entire Project Brain build workflow
+does not apply. This is the first question the human must answer.
+
+**Reversal Condition:** A decision that this repo becomes the editing surface and Rork is
+retired or used only for scaffolding.
+
+---
+
+### [YYYY-MM-DD] — [Decision Title]
+
+**Decision:** [What was decided]
+
+**Context:** [What led to this decision]
+
+**Options Considered:**
+
+1. [Option A]
+2. [Option B]
+3. [Option C]
+
+**Reasoning:** [Why this decision is best for now]
+
+**Impact:** [What changes because of this decision]
+
+**Reversal Condition:** [What would make us change this decision]
