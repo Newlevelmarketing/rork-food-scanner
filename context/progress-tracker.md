@@ -54,6 +54,34 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 05 — Deployable Legal URLs** (`context/feature-specs/05-deployable-legal-urls.md`) —
+complete.
+
+Unit 02's routes worked in development and would still have **404'd in production**. The build
+emits one `index.html`; `dist/` had no `privacy/` directory, so a static host had nothing to
+serve for a direct request to `/privacy` — which is exactly the request App Store Connect and the
+Play Console make when validating a Privacy Policy URL. `vite preview` hides this, because it has
+SPA fallback built in.
+
+Added `web/public/_redirects` (Netlify, Cloudflare Pages) and `web/vercel.json` (Vercel), both
+scoped so real files still win and hashed assets are untouched. Three hosts covered deliberately
+— the human has not picked one and choosing for them would be the wrong call.
+
+Also set the document title on the legal routes, since these are public pages a reviewer opens
+directly, with the previous title restored on unmount.
+
+Verified in the running app: `/privacy` renders, tab reads "Privacy Policy — ModernBody", the
+page scrolls (1929 px of content in a 694 px viewport), the title reverts on returning to `/`, no
+console errors. The scroll check mattered — the global stylesheet pins `body { overflow: hidden }`
+for the app shell, so a page relying on document scroll would have been unreadable past the first
+screen.
+
+**Honest limit:** the rewrite rules are instructions to a host that does not exist yet and
+**cannot be verified here.** What is verified is that the fallback ships in `dist/`, the config is
+valid, and the routes render. **First thing to do after deploying: load `/privacy` on the live
+URL and confirm it is not a 404 — before pasting it into App Store Connect.**
+
+
 **Unit 04 — Honest AI Unconfigured Error** (`context/feature-specs/04-honest-ai-unconfigured-error.md`)
 — complete, web only.
 
