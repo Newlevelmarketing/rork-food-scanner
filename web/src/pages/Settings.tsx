@@ -28,6 +28,7 @@ import {
 } from "@/features/settings/SettingsSheets";
 import { haptics } from "@/lib/haptics";
 import { useLanguage } from "@/lib/i18n";
+import { supportEmail } from "@/lib/legal";
 import { useAppStore } from "@/store/AppStore";
 
 type SettingsRoute =
@@ -189,11 +190,21 @@ export function Settings(): JSX.Element {
         </Section>
 
         <Section title={t("s.support")}>
-          <LinkRow icon={<FileText size={17} />} title={t("s.terms")} href="https://rork.app/terms" />
+          {/* ModernBody's own documents, not the toolchain vendor's. These are the
+              same URLs submitted to App Store Connect and the Play Console. */}
+          <LinkRow icon={<FileText size={17} />} title={t("s.terms")} href="/terms" />
           <Divider />
-          <LinkRow icon={<Lock size={17} />} title={t("s.privacy")} href="https://rork.app/privacy" />
-          <Divider />
-          <LinkRow icon={<Mail size={17} />} title={t("s.email")} href="mailto:support@calzy.app" />
+          <LinkRow icon={<Lock size={17} />} title={t("s.privacy")} href="/privacy" />
+          {supportEmail !== "" && (
+            <>
+              <Divider />
+              <LinkRow
+                icon={<Mail size={17} />}
+                title={t("s.email")}
+                href={`mailto:${supportEmail}`}
+              />
+            </>
+          )}
         </Section>
 
         <div className="px-5">
