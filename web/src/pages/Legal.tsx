@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import type { JSX } from "react";
+import { useEffect } from "react";
 
 import type { LegalDocument } from "@/lib/legal";
 import { appName, appVersion } from "@/lib/legal";
@@ -15,6 +16,17 @@ import { appName, appVersion } from "@/lib/legal";
  * this page owns its own scroll container rather than relying on the doc.
  */
 export function LegalPage({ doc }: { doc: LegalDocument }): JSX.Element {
+  // These are standalone public documents a reviewer opens directly, so the tab
+  // should name the document rather than the app's marketing title. Restored on
+  // unmount so returning to the shell does not keep a stale title.
+  useEffect(() => {
+    const previous = window.document.title;
+    window.document.title = `${doc.title} — ${appName}`;
+    return () => {
+      window.document.title = previous;
+    };
+  }, [doc.title]);
+
   return (
     <div className="calzy-backdrop h-full w-full overflow-y-auto">
       <main className="mx-auto flex w-full max-w-[680px] flex-col gap-6 px-5 pb-16 pt-8">

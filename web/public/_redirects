@@ -1,0 +1,9 @@
+# SPA fallback for Netlify and Cloudflare Pages.
+#
+# The build emits a single index.html, so a direct request for a client-side
+# route -- /privacy and /terms in particular -- would otherwise 404. Those two
+# URLs are submitted to App Store Connect and the Play Console and are fetched
+# directly, so this rule is load-bearing, not a nicety.
+#
+# Real files win over this rule, so hashed assets under /assets/* are unaffected.
+/*    /index.html   200

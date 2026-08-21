@@ -54,6 +54,107 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 07 — Enable Strict TypeScript** (`context/feature-specs/07-enable-strict-typescript.md`) —
+complete.
+
+I predicted this would "surface errors across the whole tree." **It surfaced none.** Full
+`--strict`, with `noImplicitAny`, `noFallthroughCasesInSwitch`, `noUnusedLocals` and
+`noUnusedParameters` all added, produces **0 errors** across 94 files including generated
+`components/ui/**`.
+
+Because a zero from a typechecker is also what a misconfigured command produces, it was verified
+three ways: `--showConfig` confirmed the flags applied, `--listFiles` confirmed 94 `src/` files
+were checked, and a temporary probe with a deliberate null-deref and implicit `any` produced
+exactly `TS18047` and `TS7006` before being deleted.
+
+Trap worth remembering: an explicit `noImplicitAny: false` **overrides** the `strict` umbrella.
+Flipping `strict` alone would have quietly delivered less than it looked like.
+
+Enabled `strict` and `noFallthroughCasesInSwitch` (matching `tsconfig.node.json`, which was
+already strict), and added `npm run typecheck`. Left `noUnusedLocals`/`noUnusedParameters` off —
+both sibling configs and `eslint.config.js:23` deliberately disable that class of check.
+
+**The unit paid for itself:** with strict on, zod's inference is correct, so the assertion unit 06
+needed in `lib/ai.ts` was removed. The compiler now verifies what it previously had to be told.
+
+**Scope deviation, recorded:** the spec put `lib/ai.ts` out of scope. One line was changed anyway,
+because the comment there asserted the compiler "cannot see" something it now can — leaving it
+would have shipped a comment that lies about adjacent code. Documented in the spec rather than
+absorbed silently.
+
+**Finding — nothing enforces typechecking.** `npm run build` runs `vite build`, which does not
+typecheck, and there is no CI in the repo. A type error can still reach a production bundle.
+Adding CI is its own unit and interacts with the unresolved Rork question, so it is recorded, not
+solved.
+
+| Check | Baseline | After |
+| --- | --- | --- |
+| Typecheck | 0 errors, non-strict | **0 errors, full strict** |
+| Lint | 0 errors, 10 warnings | **0 errors, 10 warnings** — same 10 |
+| Unit tests | 1 test | **74 tests, all pass** |
+| Build | Pass | **Pass** |
+
+
+**Unit 06 — Validate the AI Response** (`context/feature-specs/06-validate-ai-response.md`) —
+complete.
+
+`JSON.parse(json) as AnalysisResult` checked nothing. An item missing `calories` became NaN via
+`Math.max(0, Math.round(undefined))`, was persisted to `localStorage`, and propagated into the
+Home tab's calorie ring — surviving reload. `healthScore` had no clamping at all, and
+`Home.tsx:68` averages it across the day, so one string value corrupted the day's health average.
+
+Replaced with a zod schema and an exported `parseAnalysis(text)` covering extract → parse →
+validate, so the untrusted-input path is testable without the network. **74 tests, up from 56.**
+
+Numeric strings are coerced, because models return `"200"` for `200` routinely. `isFood` is
+deliberately **not** `z.coerce.boolean()`, which maps `"false"` to `true`.
+
+**Two findings beyond the fix:**
+
+1. **Typecheck failed first, with TS2322.** Under `strict: false`, zod's inference degrades to
+   all-properties-optional, so the compiler could not see that `safeParse` had guaranteed the
+   shape. This is concrete evidence for the standing observation that this codebase is written
+   strictly while configured loosely. **A "turn on `strict`" unit is now worth scheduling.**
+2. **The bundle cost is real:** +13.80 kB gzip (273.20 → 287.00), on a chunk the build already
+   warns is over 500 kB. A hand-rolled validator would have cost nothing. Recorded with a
+   reversal condition — the test suite pins the behaviour, so swapping it out later is safe.
+
+| Check | Baseline | After |
+| --- | --- | --- |
+| Unit tests | 1 test | **74 tests, 4 files, all pass** |
+| Typecheck | 0 errors | **0 errors** |
+| Lint | 0 errors, 10 warnings | **0 errors, 10 warnings** — same 10 |
+| Build | 942.95 kB | **1,009.54 kB** (+13.80 kB gzip, zod) |
+
+
+**Unit 05 — Deployable Legal URLs** (`context/feature-specs/05-deployable-legal-urls.md`) —
+complete.
+
+Unit 02's routes worked in development and would still have **404'd in production**. The build
+emits one `index.html`; `dist/` had no `privacy/` directory, so a static host had nothing to
+serve for a direct request to `/privacy` — which is exactly the request App Store Connect and the
+Play Console make when validating a Privacy Policy URL. `vite preview` hides this, because it has
+SPA fallback built in.
+
+Added `web/public/_redirects` (Netlify, Cloudflare Pages) and `web/vercel.json` (Vercel), both
+scoped so real files still win and hashed assets are untouched. Three hosts covered deliberately
+— the human has not picked one and choosing for them would be the wrong call.
+
+Also set the document title on the legal routes, since these are public pages a reviewer opens
+directly, with the previous title restored on unmount.
+
+Verified in the running app: `/privacy` renders, tab reads "Privacy Policy — ModernBody", the
+page scrolls (1929 px of content in a 694 px viewport), the title reverts on returning to `/`, no
+console errors. The scroll check mattered — the global stylesheet pins `body { overflow: hidden }`
+for the app shell, so a page relying on document scroll would have been unreadable past the first
+screen.
+
+**Honest limit:** the rewrite rules are instructions to a host that does not exist yet and
+**cannot be verified here.** What is verified is that the fallback ships in `dist/`, the config is
+valid, and the routes render. **First thing to do after deploying: load `/privacy` on the live
+URL and confirm it is not a 404 — before pasting it into App Store Connect.**
+
+
 **Unit 04 — Honest AI Unconfigured Error** (`context/feature-specs/04-honest-ai-unconfigured-error.md`)
 — complete, web only.
 
