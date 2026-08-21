@@ -54,6 +54,47 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 07 — Enable Strict TypeScript** (`context/feature-specs/07-enable-strict-typescript.md`) —
+complete.
+
+I predicted this would "surface errors across the whole tree." **It surfaced none.** Full
+`--strict`, with `noImplicitAny`, `noFallthroughCasesInSwitch`, `noUnusedLocals` and
+`noUnusedParameters` all added, produces **0 errors** across 94 files including generated
+`components/ui/**`.
+
+Because a zero from a typechecker is also what a misconfigured command produces, it was verified
+three ways: `--showConfig` confirmed the flags applied, `--listFiles` confirmed 94 `src/` files
+were checked, and a temporary probe with a deliberate null-deref and implicit `any` produced
+exactly `TS18047` and `TS7006` before being deleted.
+
+Trap worth remembering: an explicit `noImplicitAny: false` **overrides** the `strict` umbrella.
+Flipping `strict` alone would have quietly delivered less than it looked like.
+
+Enabled `strict` and `noFallthroughCasesInSwitch` (matching `tsconfig.node.json`, which was
+already strict), and added `npm run typecheck`. Left `noUnusedLocals`/`noUnusedParameters` off —
+both sibling configs and `eslint.config.js:23` deliberately disable that class of check.
+
+**The unit paid for itself:** with strict on, zod's inference is correct, so the assertion unit 06
+needed in `lib/ai.ts` was removed. The compiler now verifies what it previously had to be told.
+
+**Scope deviation, recorded:** the spec put `lib/ai.ts` out of scope. One line was changed anyway,
+because the comment there asserted the compiler "cannot see" something it now can — leaving it
+would have shipped a comment that lies about adjacent code. Documented in the spec rather than
+absorbed silently.
+
+**Finding — nothing enforces typechecking.** `npm run build` runs `vite build`, which does not
+typecheck, and there is no CI in the repo. A type error can still reach a production bundle.
+Adding CI is its own unit and interacts with the unresolved Rork question, so it is recorded, not
+solved.
+
+| Check | Baseline | After |
+| --- | --- | --- |
+| Typecheck | 0 errors, non-strict | **0 errors, full strict** |
+| Lint | 0 errors, 10 warnings | **0 errors, 10 warnings** — same 10 |
+| Unit tests | 1 test | **74 tests, all pass** |
+| Build | Pass | **Pass** |
+
+
 **Unit 06 — Validate the AI Response** (`context/feature-specs/06-validate-ai-response.md`) —
 complete.
 

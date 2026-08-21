@@ -95,7 +95,46 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-08-21 — Enable strict TypeScript
+
+**Decision:** Set `strict: true` and `noFallthroughCasesInSwitch: true` in
+`web/tsconfig.app.json`, remove the `noImplicitAny: false` override, and add an `npm run typecheck`
+script.
+
+**Context:** Recorded at onboarding as a gap — the compiler configured loosely while the code was
+written strictly. Unit 06 turned it into a real cost when zod's inference degraded without
+`strictNullChecks`. `tsconfig.node.json` already set `strict: true`, so the build tooling was
+strict and only the application was not.
+
+**Options Considered:**
+
+1. Leave it and keep working around the consequences.
+2. Enable `strictNullChecks` alone — the minimum that fixes zod.
+3. Enable full `strict`, plus the fallthrough check to match the sibling config.
+
+**Reasoning:** Measured before deciding. Full `strict` produces **zero errors** across 94 files,
+generated `components/ui/**` included — verified with `--showConfig`, a file count, and a probe
+file whose deliberate violations produced `TS18047` and `TS7006` before being removed. Option 3
+costs nothing and option 2 would have left the weaker setting in place for no gain.
+
+One trap: an explicit `noImplicitAny: false` overrides the `strict` umbrella. Flipping `strict`
+alone would have delivered less than it appeared to.
+
+**Impact:** No source change was required. The assertion unit 06 needed in `lib/ai.ts` became
+unnecessary and was removed — the compiler now verifies what it previously had to be told.
+
+**Deliberately left off:** `noUnusedLocals` and `noUnusedParameters`, though both measure clean.
+Both sibling configs set them false and `eslint.config.js:23` disables the ESLint equivalent. That
+is a consistent existing stance and overturning it is a separate decision.
+
+**Reversal Condition:** None foreseen. If a future dependency cannot satisfy strict, prefer typing
+around it over relaxing the project.
+
+---
+
 ### 2026-08-20 — Finding: `strict: false` is degrading zod's type inference
+
+> **Resolved 2026-08-21** by the decision above. Kept for the reasoning trail.
 
 **Status:** **Noted, not fixed.** Recorded because it will recur with any schema library.
 

@@ -163,14 +163,7 @@ export function parseAnalysis(text: string): AnalysisResult {
   const validated = analysisSchema.safeParse(raw);
   if (!validated.success) throw new NutritionAIError("badResponse");
 
-  // `tsconfig.app.json` sets `strict: false`, and zod's type inference silently
-  // degrades to all-properties-optional without `strictNullChecks`. The compiler
-  // therefore cannot see that `safeParse` has already guaranteed this shape.
-  //
-  // This assertion is not the one this unit removed. That one claimed a shape
-  // nothing had checked; by this line the shape has been verified at runtime,
-  // field by field. See the note in `context/decision-log.md`.
-  const parsed = validated.data as AnalysisResult;
+  const parsed = validated.data;
   if (!parsed.isFood || parsed.items.length === 0) {
     throw new NutritionAIError("notFood");
   }
