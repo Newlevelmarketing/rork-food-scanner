@@ -49,6 +49,71 @@ back to a single `CLAUDE.md`.
 
 ---
 
+### 2026-08-20 — Validate the AI response at runtime with zod
+
+**Decision:** Parse the model reply through a zod schema before it reaches the store, replacing
+the `JSON.parse(json) as AnalysisResult` assertion in `web/src/lib/ai.ts`.
+
+**Context:** `as` is a promise to the compiler, not a check. The model reply is the app's least
+trusted input — generated text from a third-party service over the network — and nothing verified
+its shape. An item missing `calories` produced `Math.max(0, Math.round(undefined))` → **NaN**,
+which was written into `MealEntry.items`, persisted to `localStorage`, and propagated through
+`mealCalories` into the Home tab's calorie ring. `healthScore` was worse: nothing clamped or
+rounded it, and `Home.tsx:68` averages it across the day, so a single string value turned the
+day's health average into concatenated garbage. The corruption survived reload.
+
+The NaN mechanism was confirmed directly: `Math.round(undefined)` is `NaN`, `Math.max(0, NaN)` is
+`NaN`, and `500 + NaN` is `NaN`.
+
+`zod` had been a declared dependency since before this brain existed, imported nowhere.
+
+**Options Considered:**
+
+1. Leave the assertion and rely on `resultToItems`' clamping — which does not help, since
+   `Math.max(0, NaN)` is NaN.
+2. Hand-roll a validator — roughly 40 lines, no bundle cost.
+3. Use zod, already declared in `package.json`.
+
+**Reasoning:** Option 3 is idiomatic, declarative, and keeps the schema readable next to the
+system prompt that produces the payload. The dependency was already committed to.
+
+**Impact — with an honest cost:** the bundle grew from **951.81 kB to 1,009.54 kB** raw, and
+**273.20 kB to 287.00 kB gzipped: +13.80 kB gzip** for validating one payload shape. The build
+already warns that the chunk exceeds 500 kB. Option 2 would have cost nothing.
+
+**Reversal Condition:** If bundle size becomes a priority — a plausible outcome given the
+existing chunk warning — replace the schema with a hand-written validator and drop zod. The test
+suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to make.
+
+**Two sub-decisions worth recording:**
+
+- Numeric strings are **coerced**. Models return `"200"` for `200` routinely, and rejecting that
+  would fail responses that are semantically fine.
+- `isFood` is **not** run through `z.coerce.boolean()`, which maps the string `"false"` to `true`
+  and would log a photo of a bicycle as a meal. It accepts a real boolean or an explicit
+  `"true"`/`"false"` mapping.
+
+---
+
+### 2026-08-20 — Finding: `strict: false` is degrading zod's type inference
+
+**Status:** **Noted, not fixed.** Recorded because it will recur with any schema library.
+
+`tsconfig.app.json` sets `strict: false`, and therefore `strictNullChecks: false`. Under that
+setting zod's inferred output type silently degrades to **all properties optional**, so
+`parseAnalysis` failed to typecheck against the `AnalysisResult` interface with TS2322.
+
+Worked around with a single documented assertion after `safeParse` has already verified the shape
+at runtime. That assertion is sound — unlike the one this unit removed, the check really has
+happened by that line — but it exists only because the compiler cannot see it.
+
+This is concrete evidence for the observation already in `context/execution-standards.md`: the
+codebase is written strictly while the compiler is configured loosely. Turning `strict` on is its
+own unit with its own spec, because it will surface errors across the whole tree. It is now worth
+scheduling.
+
+---
+
 ### 2026-08-20 — Host the legal documents on the web build at `/privacy` and `/terms`
 
 **Decision:** Port the privacy policy and terms from `ios-calzy/.../Utilities/Legal.swift` into

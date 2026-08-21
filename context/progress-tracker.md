@@ -54,6 +54,38 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 06 — Validate the AI Response** (`context/feature-specs/06-validate-ai-response.md`) —
+complete.
+
+`JSON.parse(json) as AnalysisResult` checked nothing. An item missing `calories` became NaN via
+`Math.max(0, Math.round(undefined))`, was persisted to `localStorage`, and propagated into the
+Home tab's calorie ring — surviving reload. `healthScore` had no clamping at all, and
+`Home.tsx:68` averages it across the day, so one string value corrupted the day's health average.
+
+Replaced with a zod schema and an exported `parseAnalysis(text)` covering extract → parse →
+validate, so the untrusted-input path is testable without the network. **74 tests, up from 56.**
+
+Numeric strings are coerced, because models return `"200"` for `200` routinely. `isFood` is
+deliberately **not** `z.coerce.boolean()`, which maps `"false"` to `true`.
+
+**Two findings beyond the fix:**
+
+1. **Typecheck failed first, with TS2322.** Under `strict: false`, zod's inference degrades to
+   all-properties-optional, so the compiler could not see that `safeParse` had guaranteed the
+   shape. This is concrete evidence for the standing observation that this codebase is written
+   strictly while configured loosely. **A "turn on `strict`" unit is now worth scheduling.**
+2. **The bundle cost is real:** +13.80 kB gzip (273.20 → 287.00), on a chunk the build already
+   warns is over 500 kB. A hand-rolled validator would have cost nothing. Recorded with a
+   reversal condition — the test suite pins the behaviour, so swapping it out later is safe.
+
+| Check | Baseline | After |
+| --- | --- | --- |
+| Unit tests | 1 test | **74 tests, 4 files, all pass** |
+| Typecheck | 0 errors | **0 errors** |
+| Lint | 0 errors, 10 warnings | **0 errors, 10 warnings** — same 10 |
+| Build | 942.95 kB | **1,009.54 kB** (+13.80 kB gzip, zod) |
+
+
 **Unit 05 — Deployable Legal URLs** (`context/feature-specs/05-deployable-legal-urls.md`) —
 complete.
 
