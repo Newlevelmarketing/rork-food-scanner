@@ -95,6 +95,40 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-08-22 — Adopt CI for the web app, and exclude the browser suite from it
+
+**Decision:** Add `.github/workflows/web-ci.yml` running typecheck, lint, unit tests and build on
+every push and pull request touching `web/`. Deliberately exclude the Playwright browser suite.
+
+**Context:** Unit 07 surfaced that nothing enforced any check. `npm run build` runs `vite build`,
+which does not typecheck, and the repo had no CI. Strict TypeScript and 74 tests only protect the
+codebase if something runs them.
+
+**Options Considered:**
+
+1. No CI — rely on discipline.
+2. CI including the browser suite, adding `npx playwright install`.
+3. CI covering only checks already observed to pass.
+
+**Reasoning:** Option 3. Option 2 is tempting because it would appear to fix the one failing
+check, but **the browser suite has never been observed to pass** — it could not start locally, so
+its result is unknown rather than green. Putting it in CI would assert a check nobody has seen
+succeed, and a failure in `calendar.browser.test.tsx` for an unrelated reason would look like this
+workflow's fault. Enabling it is a small follow-up once someone runs `npx playwright install` and
+confirms it passes.
+
+**Impact:** Every push touching `web/` is now gated on four checks that pass locally today.
+Documentation-only commits are path-filtered out.
+
+**Known gap carried forward:** `npm ci` is unavailable because the lockfile is `bun.lock` with no
+`package-lock.json`, so CI installs resolve unpinned. Commented in the workflow so it is not
+mistaken for reproducible.
+
+**Reversal Condition:** If CI minutes become a cost concern on a private repo, narrow the triggers
+to pull requests only.
+
+---
+
 ### 2026-08-21 — Enable strict TypeScript
 
 **Decision:** Set `strict: true` and `noFallthroughCasesInSwitch: true` in

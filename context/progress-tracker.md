@@ -54,6 +54,43 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 09 — Continuous Integration** (`context/feature-specs/09-continuous-integration.md`) —
+complete, with a stated verification limit.
+
+Unit 07 found that nothing enforced any check: `vite build` does not typecheck, and there was no
+CI. Strict TypeScript and 74 tests only protect the codebase if something runs them.
+`.github/workflows/web-ci.yml` now runs typecheck, lint, unit tests and build on every push and PR
+touching `web/`, path-filtered so documentation commits do not burn minutes.
+
+**The browser suite is deliberately excluded.** Adding `npx playwright install` would have looked
+like fixing the one failing check, but that suite **has never been observed to pass** — it could
+not start locally. Its result is unknown, not green, and asserting it in CI would be a claim
+nobody has verified. Enabling it is a follow-up once someone runs `npx playwright install` and
+confirms.
+
+**Verification limit:** the workflow itself **has not been observed to run.** GitHub Actions
+cannot be executed from here and the repo is private, so its status cannot be read back. Every
+command in it passes locally and the YAML parses — but **check the first run before trusting it.**
+A failure there will be environmental, not a code defect.
+
+**Unit 08 — ScanSheet Stale Language** (`context/feature-specs/08-scansheet-stale-language.md`) —
+complete.
+
+Recorded at onboarding as "the one real warning among the ten." On reading, it was a **user-visible
+bug in a 32-language app.** `handle` passes `language.englishName` to the model to choose the
+reply language, but omitted it from its `useCallback` deps. `ScanSheet` is mounted permanently by
+`Index.tsx:61` with an `open` prop, so the stale closure survived the whole session: change
+language in Settings, scan a meal, and item names came back in the *previous* language while the
+interface was translated.
+
+One dependency added, with a comment recording the failure so nobody tidies it away.
+
+**Baseline changed: lint is now 9 warnings, not 10.** All nine are
+`react-refresh/only-export-components`, seven in generated `components/ui/**`. They are HMR hints,
+not defects. `context/execution-standards.md` updated so future units are not measured against a
+stale number.
+
+
 **Unit 07 — Enable Strict TypeScript** (`context/feature-specs/07-enable-strict-typescript.md`) —
 complete.
 

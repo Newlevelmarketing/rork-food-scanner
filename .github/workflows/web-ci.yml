@@ -1,0 +1,61 @@
+name: web
+
+# Nothing enforced the checks before this workflow existed: `npm run build` runs
+# `vite build`, which does not typecheck, so a type error could reach a
+# production bundle unopposed.
+#
+# Only paths that affect the web app trigger it. The native apps cannot be built
+# here - `Config.swift` and `Config.kt` are Rork-generated and gitignored, so a
+# clean checkout has no such file. See context/architecture.md, Known Debt.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  checks:
+    name: typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # `npm ci` is not available: the repo's lockfile is `bun.lock` and there is
+      # no `package-lock.json`, so installs here resolve unpinned. That is a known
+      # reproducibility gap, recorded in context/architecture.md.
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+      # The browser suite is deliberately absent. It needs Playwright browsers
+      # (`npx playwright install`), and it has never been observed to pass - it
+      # could not start locally, so its result is unknown rather than green.
+      # Adding it here would assert a check nobody has seen succeed.
+      # See context/feature-specs/09-continuous-integration.md.
