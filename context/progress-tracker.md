@@ -54,6 +54,41 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 10 — i18n and Food-Search Tests** (`context/feature-specs/10-i18n-and-food-search-tests.md`)
+— complete.
+
+Localisation is one of this product's largest surfaces — 32 languages, three right-to-left — and
+none of it was tested. Unit 08 had already found a shipped language bug, so the area warranted
+attention rather than trust.
+
+**118 tests across 6 files, up from 74. All pass, no defect found.**
+
+- `i18n.test.ts` — the language table, `languageFor`, `translate` and its two-step fallback, and
+  `browserLanguage` across every branch: `zh-TW` and `zh-Hant-HK` → Traditional, `zh-CN` and bare
+  `zh` → Simplified, `no` → `nb`, unsupported tags falling through to the next preference, and
+  English for an empty list or absent `navigator`.
+- `foods.test.ts` — the bundled table's integrity, search matching and ranking, `foodToItem`, and
+  `presetCalories` weight scaling.
+
+**Catalogue integrity is now enforced, not assumed.** Measured first: 32 tables, 52 keys each,
+identical key sets, no empty values. `context/execution-standards.md` requires shipped copy to
+reach all 32 locales — that rule was honour-system and is now a failing test.
+
+**A note on test quality.** The ranking test was first written with an early return for the case
+where no query exercises both match kinds, which would have let it pass while asserting nothing.
+Checked rather than assumed: the table yields 6 rankable queries, the first being `"protein"` with
+2 name matches against 9 tag-only. The escape hatch was replaced with an explicit assertion, so a
+future data change that makes ranking untestable fails loudly instead of going quietly green.
+
+No new dependencies. `navigator` is stubbed with `vi.stubGlobal` rather than pulling in a DOM.
+
+**Still untested and now the highest-value target:** `store/AppStore.tsx` — streaks, 7-day
+averages, the weight `isLatest` rule, water undo, case-insensitive saved-food matching. It needs
+`@testing-library/react` plus `jsdom` or `happy-dom`, and adding devDependencies carries a
+wrinkle worth deciding separately: the lockfile is `bun.lock` with no `package-lock.json`, so an
+npm-added dependency would not appear in the lockfile CI installs from.
+
+
 **Unit 09 — Continuous Integration** (`context/feature-specs/09-continuous-integration.md`) —
 complete, with a stated verification limit.
 
