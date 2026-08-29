@@ -72,6 +72,43 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 11a — Runnable From a Clean Clone** (`context/feature-specs/11a-runnable-from-a-clean-clone.md`)
+— complete. Done so the human's Mac works on first pull.
+
+Four traps stood between a clean clone and a running app, none discoverable from the repo:
+
+1. **`vite dev` did not serve `/api/*`.** After unit 11 the scanner posts to `/api/analyze`, which
+   only the *host* runs in production — locally the request fell through to the SPA fallback and
+   failed to parse. **Scanning was dead in development.** A dev-server plugin now mounts the real
+   handler via `ssrLoadModule`, so local dev exercises the same code the deployment does.
+2. **iOS did not compile from a clean clone.** `ios-calzy/setup-config.sh` creates the gitignored
+   `Config.swift` from a committed template, refuses to overwrite, and is one command.
+3. **Node version.** `.nvmrc` pins 24 and `engines` records `>=20.12.0`, so the v18-via-nvm failure
+   stops looking like a code fault.
+4. **No README at all.** The repo now has one: run instructions per platform, the env-var rules,
+   deploy settings, and a map of the brain.
+
+**Verified against a live dev server**, exercising the real handler — not a stub:
+
+| Request | Result |
+| --- | --- |
+| Valid body, no key | **503 `notConfigured`** |
+| `kind: "audio"` | **400** with a specific message |
+| Whitespace content | **400** |
+| Image that is not a data URL | **400** |
+| Valid body, bad key | **502** — the request genuinely reached Gemini |
+| `GET` | **405** |
+
+Also confirmed `GEMINI_API_KEY` never appears in `dist/`, and `setup-config.sh` output is ignored
+by `git check-ignore`. 158 tests, typecheck 0, lint 9 warnings, build passes.
+
+**Finding:** an invalid API key surfaces to users as "Something went wrong" rather than an auth
+error, because Google returns 400 for a bad key and this proxy treats 400 as our fault. That is the
+right user-facing choice — the alternative tells them to reload, which cannot supply a server key —
+but it makes the likeliest deployment failure look generic. The server log now says
+`check GEMINI_API_KEY and GEMINI_MODEL` on 400/403.
+
+
 **Unit 11 — Gemini Proxy** (`context/feature-specs/11-gemini-proxy.md`) — complete for web.
 **First unit of the de-Rork project**, which the human scoped as "everything", with Gemini chosen
 as the direct provider.

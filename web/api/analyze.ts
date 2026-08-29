@@ -117,7 +117,15 @@ export default async function handler(request: Request, env?: Record<string, str
   if (!upstream.ok) {
     // Never forward the upstream body: it can echo request content and name the
     // provider, neither of which belongs in a client response.
-    console.error("[analyze] gemini responded", upstream.status);
+    // 400 and 403 from Gemini almost always mean a bad or unauthorised key, or
+    // a model id that does not exist. The user-facing message stays generic on
+    // purpose -- neither is something they can act on -- so the actionable
+    // detail belongs here, in the operator's log.
+    const hint =
+      upstream.status === 400 || upstream.status === 403
+        ? " - check GEMINI_API_KEY and GEMINI_MODEL"
+        : "";
+    console.error(`[analyze] gemini responded ${upstream.status}${hint}`);
     return json({ error: "upstream" }, statusForUpstream(upstream.status));
   }
 
