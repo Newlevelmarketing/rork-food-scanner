@@ -1,0 +1,27 @@
+// Template for the Rork-generated Config.kt.
+//
+// Deliberately NOT named `.kt`: Gradle compiles everything under
+// app/src/main/java, so a second file declaring `object Config` in the same
+// package would be a redeclaration error.
+//
+// Copy it into place with:
+//
+//     ./android/setup-config.sh
+//
+// The destination is gitignored (android/.gitignore) - keep it that way.
+//
+// The `package` line below is a placeholder. setup-config.sh rewrites it to
+// match whatever package MainActivity.kt actually declares, so this template
+// keeps working if the package is ever renamed.
+//
+// Only `allValues` is referenced anywhere in the Android target, in
+// data/AiService.kt.
+
+package PACKAGE_PLACEHOLDER
+
+object Config {
+    val allValues: Map<String, String> = mapOf(
+        "EXPO_PUBLIC_TOOLKIT_URL" to "https://toolkit.rork.com",
+        "EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY" to "",
+    )
+}

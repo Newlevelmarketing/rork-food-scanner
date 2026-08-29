@@ -72,6 +72,41 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 16 — Android Config Bootstrap and Cosmetic De-Rork**
+(`context/feature-specs/16-cosmetic-derork.md`) — complete.
+
+Everything in the de-Rork that needs neither a Mac, an Android SDK, nor a decision is now done.
+
+- `android/setup-config.sh` + `Config.kt.example` — the Android half of the config bootstrap. It
+  derives the package from `MainActivity.kt` rather than hardcoding it, so it survives unit 14's
+  rename. Tested; output confirmed gitignored.
+- `rork.json` deleted — checked first, and it was referenced **only in documentation**. No build,
+  script or source reads it.
+- `web/package.json` name: `rork-web-app` → `modernbody-web`.
+- `.rork/` cache entries and `rork-eslint.config.js` removed from all three `.gitignore` files.
+- `// Created by Rork on …` headers stripped from four Swift files. **Comment-only** —
+  `git diff --stat` confirms two deleted lines per file. A removed comment cannot change
+  compilation, which is why this was acceptable without a compiler, unlike unit 12.
+
+Checks unchanged: typecheck 0, lint 9 warnings, 158 tests, build passes.
+
+### Rork surface after this unit
+
+| Area | Remaining | Blocked on |
+| --- | --- | --- |
+| `web/src`, `web/api` | **None real** | — (`AIErrorKind` matches "rorK" incidentally) |
+| `ios-calzy` | 3 files | Unit 12 (proxy) and unit 15 (bundle id) |
+| `android` | 36 files | Unit 14 — 35 are the package name |
+
+**There is no unblocked de-Rork work left.** Everything remaining maps to:
+
+- **Unit 12** — native clients onto the proxy. Needs a green Mac build first, so a Swift or Kotlin
+  mistake is caught against a project known to compile. This is also what finally lets the leaked
+  Rork key be rotated.
+- **Unit 14** — Android package rename. Needs a target namespace nobody has chosen.
+- **Unit 15** — iOS bundle id. Needs the App Store Connect answer, which is permanent either way.
+
+
 **Unit 11a — Runnable From a Clean Clone** (`context/feature-specs/11a-runnable-from-a-clean-clone.md`)
 — complete. Done so the human's Mac works on first pull.
 

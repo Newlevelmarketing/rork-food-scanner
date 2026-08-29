@@ -2,8 +2,6 @@
 //  ModernBodyFoodScannerTests.swift
 //  ModernBodyFoodScannerTests
 //
-//  Created by Rork on August 1, 2026.
-//
 
 import Testing
 @testable import ModernBodyFoodScanner

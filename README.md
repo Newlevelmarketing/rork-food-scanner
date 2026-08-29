@@ -86,8 +86,13 @@ Full walkthrough: [`submission/mac-setup-runbook.md`](submission/mac-setup-runbo
 
 ## Run the Android app
 
-Open `android/` in Android Studio. Like iOS, it needs a generated `Config.kt`
-that is gitignored — see `android/.gitignore`.
+```sh
+./android/setup-config.sh
+```
+
+Then open `android/` in Android Studio. As on iOS, `Config.kt` is generated and
+gitignored, and the project will not compile without it. The script derives the
+package from `MainActivity.kt`, so it keeps working if the package is renamed.
 
 ---
 
