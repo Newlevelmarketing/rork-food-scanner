@@ -4,16 +4,34 @@ Update this file after every meaningful implementation or project change.
 
 ## Current Phase
 
-- **Unit 01 in progress — App Store review response. Brain onboarding Phase 3 still open.**
+- **De-Rork in progress (units 11–16). Unit 11 done; unit 12 next, gated on a Mac build.**
+- Apple's Guideline 2.1 reply (unit 01) is still open, blocked on a physical iPhone.
 
 ## Current Goal
 
-Reply to Apple's Guideline 2.1 "Information Needed" message of 2026-08-10 so the ModernBody
-1.0.0 iOS submission can continue review.
+Make the project independent of Rork. The human scoped this as **"everything"** — runtime gateway,
+app identity, config generation and cosmetic traces — with **Google Gemini** chosen as the direct
+provider.
 
-This unit was chosen by circumstance rather than by planning, and it is the right choice: it
-changes **no application code**, so it proceeds cleanly even with the Rork-overwrite question
-(Q1) still unresolved.
+Planned sequence:
+
+| Unit | Work | Status |
+| --- | --- | --- |
+| 11 | Gemini proxy; web client off the gateway | **Done** |
+| 12 | iOS and Android clients onto the proxy | Next — needs the Mac build first |
+| 13 | Replace Rork-generated `Config.swift` / `Config.kt` | Pending |
+| 14 | Rename the Android package off `com.rork.calzyandroid` | Pending |
+| 15 | Rename the iOS bundle id off `app.rork.…` | **Blocked** — see below |
+| 16 | `rork.json` and remaining cosmetic traces | Pending |
+
+**Unit 15 is blocked on a question that was answered "not sure":** whether
+`app.rork.kffuebxmbishdc4eli446` is already registered in App Store Connect. If it is, it is
+permanent and unit 15 must be cancelled — renaming would create a separate app and lose the review
+history. If it is not, renaming must happen before any submission. This needs settling before the
+Apple reply goes out, not after.
+
+Note the deliberate ordering: the identity renames (14, 15) come last, because they are mechanical
+and permanent, while the proxy work is reversible and unblocks the security fix.
 
 ## Completed
 
@@ -53,6 +71,47 @@ The browser-suite failure is environmental, not a code defect: it needs a one-ti
 Native apps were **not** built. They cannot be, from a clean clone — see Known Debt.
 
 ## Recently Completed
+
+**Unit 11 — Gemini Proxy** (`context/feature-specs/11-gemini-proxy.md`) — complete for web.
+**First unit of the de-Rork project**, which the human scoped as "everything", with Gemini chosen
+as the direct provider.
+
+`toolkit.rork.com` was the only runtime dependency on Rork, and the credential it required shipped
+inside the web bundle and both app binaries. Independence and the top Known Debt item were the
+same problem, so they were fixed together.
+
+`web/api/analyze.ts` now calls Gemini directly with the key held server-side. The web client posts
+`{ kind, content, jesterMode, language }` to `/api/analyze` and holds no credential at all.
+
+**Verified:**
+
+- Zero occurrences of "rork" in the built bundle; no `EXPO_PUBLIC` reference anywhere.
+- **The system prompt no longer ships to users.** It lived in three clients, had to be edited
+  three times, and was downloaded by every user. Now one server-side copy, changeable without
+  releasing an app.
+- Bundle got *smaller*: 1,009.54 kB → 1,007.63 kB.
+- 158 tests across 7 files, up from 118. Typecheck 0, lint 9 warnings, build passes.
+- `api/` is now typechecked too, so the proxy is not an unchecked blind spot.
+
+**Not verified, and it matters:** no end-to-end call to Gemini was made. There is no API key here
+and `vite dev` does not serve `/api/*`. **Deploy, then scan once, before trusting it.**
+
+**Confirm the model id before deploying.** `GEMINI_MODEL` defaults to `gemini-2.5-flash`; check it
+against Google's current documentation. It is env-configurable so a correction is config, not code.
+
+**Invariant 1 was restated, not broken** — "no backend" became "no user data is stored off the
+device". The proxy is stateless. The shipped privacy policy already described this accurately, so
+no legal copy changed. Both decisions are in `context/decision-log.md`.
+
+**Still on the Rork gateway: iOS and Android.** Nothing is broken mid-migration — both keep working
+until unit 12. **Rotate the Rork key once all three clients are off it**; anything already shipped
+has leaked it.
+
+**Toolchain trap found:** Git Bash resolves Node **v18.20.4** via nvm while PowerShell uses
+**v24.15.0**. Vite 8 needs 20.12+, so the test runner dies under the nvm default with a
+`styleText` import error that looks like a code fault. A `.nvmrc` would prevent this; not added
+yet, since it is unrelated to this unit.
+
 
 **Unit 10 — i18n and Food-Search Tests** (`context/feature-specs/10-i18n-and-food-search-tests.md`)
 — complete.

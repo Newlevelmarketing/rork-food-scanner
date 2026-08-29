@@ -95,6 +95,77 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-08-22 — Leave Rork: call Gemini through our own proxy
+
+**Decision:** Stand up `web/api/analyze.ts`, a stateless serverless proxy that calls Google Gemini
+directly, and point the web client at it. The native clients follow in unit 12.
+
+**Context:** The human asked to remove Rork so the project could be customised independently. Two
+problems turned out to be the same problem. `toolkit.rork.com` was the only runtime dependency on
+Rork, and the credential it required — `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY` — was sent as a
+`Bearer` token from the client on all three platforms. `vite.config.ts` deliberately exposed
+`EXPO_PUBLIC_*` to the bundle, so it shipped inside the web JS and both app binaries. That has been
+the top Known Debt item since onboarding, and it could not be fixed without a server.
+
+Independence and fixing the key were one job. Doing them separately would have meant building the
+proxy twice.
+
+**Options Considered:**
+
+1. Keep the gateway and accept the exposed key.
+2. Keep the gateway but proxy it, staying dependent on Rork for the model call.
+3. Call Gemini directly through our own proxy.
+
+**Reasoning:** Option 3. Gemini was chosen because it was already the primary model
+(`google/gemini-3-flash`), so the prompt is tuned for it and it is the cheapest per vision call —
+the smallest behavioural change available.
+
+**Impact:**
+
+- Verified: zero occurrences of "rork" in the built bundle, no `EXPO_PUBLIC` references, no
+  credential of any kind client-side.
+- **The system prompt moved server-side.** It previously existed in three clients, had to be
+  edited three times, and was shipped to every user. Now one copy, changeable without releasing an
+  app. Confirmed absent from `dist/`.
+- The client's error taxonomy is unchanged; the proxy maps failures onto the status codes it
+  already understood, so no user-facing copy moved.
+- The bundle got marginally smaller.
+
+**Cost the human should weigh:** billing moves in-house. Rork was presumably absorbing model cost;
+a direct Gemini key is billed per scan.
+
+**Reversal Condition:** None expected. If Gemini proves unsuitable, the proxy is the only file that
+changes — the clients neither know nor care which model answers.
+
+---
+
+### 2026-08-22 — Restate the "no backend" invariant rather than break it
+
+**Decision:** Reword invariant 1 in `context/architecture.md` from "all user data stays on the
+device, no backend" to "**no user data is stored off the device**", and record that a stateless
+analysis proxy now exists.
+
+**Context:** The proxy introduces the project's first server component, which contradicts an
+invariant proposed at onboarding. An invariant that is quietly broken is worse than one that never
+existed, so it needed restating in the open.
+
+**Reasoning:** The original wording conflated two things: *no server* and *no user data retained
+elsewhere*. Only the second is a property anyone actually cares about, and it is the one the
+privacy policy promises. The proxy holds a credential, forwards one photo or description, and
+persists nothing — so the meaningful guarantee survives intact.
+
+The shipped privacy policy already says user content "is transmitted over an encrypted connection
+to our AI processing provider", so **no legal copy needed changing** — it described this
+architecture accurately before it existed.
+
+**Impact:** Invariant 1 now describes what the system actually guarantees. Still pending human
+ratification, along with the other five.
+
+**Reversal Condition:** If the proxy ever logs, caches or stores request content, this invariant is
+broken for real and must be rewritten again — or the behaviour reverted.
+
+---
+
 ### 2026-08-22 — Adopt CI for the web app, and exclude the browser suite from it
 
 **Decision:** Add `.github/workflows/web-ci.yml` running typecheck, lint, unit tests and build on
