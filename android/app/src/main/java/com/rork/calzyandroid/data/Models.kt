@@ -56,7 +56,6 @@ data class UserProfile(
     val jesterMode: Boolean = false,
     val remindersEnabled: Boolean = true,
     val reminderTimes: List<Int> = listOf(9, 13, 19),
-    val healthSynced: Boolean = false,
     val isPro: Boolean = false,
     val hasOnboarded: Boolean = false,
     /** Language code from the catalogue in I18n.kt; null means "follow the system". */

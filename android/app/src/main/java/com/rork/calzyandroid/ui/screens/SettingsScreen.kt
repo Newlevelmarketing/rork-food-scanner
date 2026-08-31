@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Description
@@ -212,48 +211,6 @@ fun SettingsScreen(viewModel: AppViewModel) {
                 },
             ) {
                 route = SettingsRoute.language
-            }
-        }
-
-        Section(title = t("s.integrations")) {
-            Pressable(onClick = {
-                viewModel.setProfile { it.copy(healthSynced = !it.healthSynced) }
-            }) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(13.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = CalzyColors.protein,
-                        modifier = Modifier
-                            .width(28.dp)
-                            .size(19.dp),
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Health Connect",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CalzyColors.ink,
-                        )
-                        Text(
-                            text = t("s.healthSub"),
-                            fontSize = 12.sp,
-                            color = CalzyColors.inkFaint,
-                        )
-                    }
-                    Text(
-                        text = if (profile.healthSynced) t("s.connected") else t("s.connect"),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (profile.healthSynced) CalzyColors.mint else CalzyColors.inkFaint,
-                    )
-                }
             }
         }
 
