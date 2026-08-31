@@ -1,5 +1,8 @@
 package com.rork.calzyandroid.ui.sheets
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,46 +20,69 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.rork.calzyandroid.AppViewModel
+import com.rork.calzyandroid.data.PlanTerm
+import com.rork.calzyandroid.data.PurchaseManager
+import com.rork.calzyandroid.data.SubscriptionPlan
 import com.rork.calzyandroid.ui.components.CalzyCard
 import com.rork.calzyandroid.ui.components.FullScreenSheet
 import com.rork.calzyandroid.ui.components.MetricText
 import com.rork.calzyandroid.ui.components.Pressable
-import com.rork.calzyandroid.ui.components.PrimaryButton
 import com.rork.calzyandroid.ui.theme.CalzyColors
 
-private enum class Plan(val title: String, val price: String, val caption: String) {
-    yearly("Yearly", "$29.99/yr", "2 months free"),
-    monthly("Monthly", "$4.99/mo", "Cancel anytime"),
+private fun Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }
 
-/** ModernBody Pro paywall (local mock — flips the Pro flag). */
+/**
+ * ModernBody Pro paywall backed by the live RevenueCat offering.
+ *
+ * Every price on screen comes from the store product, never from a constant, so
+ * the figure shown is the figure charged in the user's own currency. When no
+ * offering can be loaded the screen says so instead of inventing prices.
+ */
 @Composable
-fun PaywallSheet(open: Boolean, viewModel: AppViewModel, onClose: () -> Unit) {
-    val data by viewModel.data.collectAsStateWithLifecycle()
-    var plan by remember { mutableStateOf(Plan.yearly) }
+fun PaywallSheet(
+    open: Boolean,
+    onClose: () -> Unit,
+    onOpenTerms: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+) {
+    val state by PurchaseManager.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(open) {
-        if (open) plan = Plan.yearly
+        if (open) {
+            PurchaseManager.clearMessage()
+            PurchaseManager.refreshOfferings()
+        }
+    }
+
+    // Purchase and restore both end with an active entitlement; close on success.
+    LaunchedEffect(state.isSubscribed) {
+        if (open && state.isSubscribed) onClose()
     }
 
     FullScreenSheet(
@@ -64,26 +90,47 @@ fun PaywallSheet(open: Boolean, viewModel: AppViewModel, onClose: () -> Unit) {
         onClose = onClose,
         title = "ModernBody Pro",
         footer = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrimaryButton(
-                    text = if (data.profile.isPro) {
-                        "You're a Pro member"
-                    } else {
-                        "Start with ${plan.title}"
-                    },
-                    enabled = !data.profile.isPro,
-                    onClick = {
-                        viewModel.setProfile { it.copy(isPro = true) }
-                        onClose()
-                    },
-                )
-                Text(
-                    text = "Recurring billing · Cancel anytime",
-                    fontSize = 11.sp,
-                    color = CalzyColors.inkFaint,
-                    textAlign = TextAlign.Center,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(bottom = 10.dp),
+            ) {
+                Pressable(
+                    onClick = { PurchaseManager.restore() },
+                    enabled = !state.isRestoring,
+                ) {
+                    Text(
+                        text = if (state.isRestoring) "Restoring…" else "Restore Purchases",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CalzyColors.ink,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
                     modifier = Modifier.fillMaxWidth(),
-                )
+                ) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Pressable(onClick = onOpenTerms) {
+                            Text(
+                                text = "Terms of Use",
+                                fontSize = 12.sp,
+                                color = CalzyColors.inkFaint,
+                            )
+                        }
+                    }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Pressable(onClick = onOpenPrivacy) {
+                            Text(
+                                text = "Privacy Policy",
+                                fontSize = 12.sp,
+                                color = CalzyColors.inkFaint,
+                            )
+                        }
+                    }
+                }
             }
         },
     ) {
@@ -93,13 +140,12 @@ fun PaywallSheet(open: Boolean, viewModel: AppViewModel, onClose: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Hero
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 6.dp),
             ) {
                 Box(
                     modifier = Modifier
@@ -129,7 +175,6 @@ fun PaywallSheet(open: Boolean, viewModel: AppViewModel, onClose: () -> Unit) {
                 )
             }
 
-            // Features
             CalzyCard(radius = 22.dp) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -153,49 +198,180 @@ fun PaywallSheet(open: Boolean, viewModel: AppViewModel, onClose: () -> Unit) {
                 }
             }
 
-            // Plans
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Plan.entries.forEach { option ->
-                    val active = plan == option
-                    Pressable(onClick = { plan = option }, modifier = Modifier.weight(1f)) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+            if (state.isPreviewPricing) {
+                Notice(
+                    text = "Design preview — these are placeholder prices. Purchasing " +
+                        "unlocks once the store products are live.",
+                )
+            }
+
+            when {
+                state.isLoading -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 30.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = CalzyColors.ink)
+                }
+
+                state.plans.isEmpty() -> Notice(
+                    text = state.message
+                        ?: "Subscription plans can't be loaded right now. " +
+                        "ModernBody stays fully usable in the meantime.",
+                )
+
+                else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    state.plans.forEach { plan ->
+                        PlanCard(
+                            plan = plan,
+                            purchasing = state.purchasingId == plan.id,
+                            disabled = state.purchasingId != null || plan.rcPackage == null,
+                            onSubscribe = {
+                                context.findActivity()?.let { activity ->
+                                    PurchaseManager.purchase(activity, plan)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
+            state.message?.takeIf { !state.isPreviewPricing }?.let { message ->
+                Text(
+                    text = message,
+                    fontSize = 13.sp,
+                    color = CalzyColors.inkSoft,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // Guideline 3.1.2 / Play billing disclosure.
+            Text(
+                text = "Subscriptions renew automatically for the same period at the " +
+                    "price shown above, charged to your Google Play account, unless " +
+                    "auto-renew is turned off at least 24 hours before the current " +
+                    "period ends. Manage or cancel in the Google Play Store under " +
+                    "Payments & subscriptions. Uninstalling the app does not cancel " +
+                    "a subscription.",
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                color = CalzyColors.inkFaint,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Notice(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CalzyColors.fat.copy(alpha = 0.12f))
+            .padding(14.dp),
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            color = CalzyColors.inkSoft,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun PlanCard(
+    plan: SubscriptionPlan,
+    purchasing: Boolean,
+    disabled: Boolean,
+    onSubscribe: () -> Unit,
+) {
+    val highlighted = plan.term == PlanTerm.YEARLY
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.85f))
+            .border(
+                width = if (highlighted) 2.dp else 1.dp,
+                color = if (highlighted) CalzyColors.ink else CalzyColors.cardBorder,
+                shape = shape,
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Text(
+                        text = plan.term.label,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CalzyColors.ink,
+                    )
+                    plan.badge?.let { badge ->
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color.White.copy(alpha = 0.85f))
-                                .border(
-                                    width = if (active) 2.dp else 1.dp,
-                                    color = if (active) {
-                                        CalzyColors.ink
-                                    } else {
-                                        CalzyColors.cardBorder
-                                    },
-                                    shape = RoundedCornerShape(20.dp),
-                                )
-                                .padding(vertical = 16.dp),
+                                .clip(CircleShape)
+                                .background(CalzyColors.mint)
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
                         ) {
                             Text(
-                                text = option.title,
-                                fontSize = 14.sp,
+                                text = badge,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = CalzyColors.ink,
-                            )
-                            MetricText(text = option.price, size = 17)
-                            Text(
-                                text = option.caption,
-                                fontSize = 11.sp,
-                                color = if (option == Plan.yearly) {
-                                    CalzyColors.mint
-                                } else {
-                                    CalzyColors.inkFaint
-                                },
-                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
                             )
                         }
                     }
                 }
+                Text(
+                    text = "Billed every ${plan.term.unitNoun} · auto-renews",
+                    fontSize = 12.sp,
+                    color = CalzyColors.inkFaint,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                MetricText(text = plan.price, size = 20)
+                plan.perUnit?.let {
+                    Text(text = it, fontSize = 11.sp, color = CalzyColors.inkFaint)
+                }
+            }
+        }
+
+        Pressable(
+            onClick = onSubscribe,
+            enabled = !disabled && !purchasing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CircleShape)
+                    .background(
+                        if (disabled) CalzyColors.ink.copy(alpha = 0.3f) else CalzyColors.ink,
+                    )
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = when {
+                        purchasing -> "Processing…"
+                        else -> "Subscribe · ${plan.price}"
+                    },
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
             }
         }
     }

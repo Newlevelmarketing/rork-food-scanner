@@ -4,7 +4,20 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
 
+    private let purchases = PurchaseManager.shared
+
     @State private var showEraseConfirm: Bool = false
+    @State private var showPaywall: Bool = false
+
+    /// Hidden entirely in a release build with no RevenueCat key, so an
+    /// unconfigured binary can never present an unpurchasable paywall.
+    private var showsSubscriptionSection: Bool {
+        #if DEBUG
+        true
+        #else
+        purchases.isConfigured
+        #endif
+    }
 
     var body: some View {
         NavigationStack {
@@ -107,6 +120,56 @@ struct SettingsView: View {
                         .padding(14)
                     }
 
+                    if showsSubscriptionSection {
+                        section("SUBSCRIPTION") {
+                            Button {
+                                Haptics.tap()
+                                showPaywall = true
+                            } label: {
+                                HStack(spacing: 13) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [Theme.plum, Theme.protein],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .frame(width: 44, height: 44)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack(spacing: 7) {
+                                            Text("ModernBody Pro")
+                                                .font(.system(size: 16, weight: .bold))
+                                                .foregroundStyle(Theme.ink)
+                                            Text(purchases.isSubscribed ? "ACTIVE" : "UPGRADE")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 7)
+                                                .padding(.vertical, 3)
+                                                .background(
+                                                    purchases.isSubscribed ? Theme.mint : Theme.ink,
+                                                    in: Capsule()
+                                                )
+                                        }
+                                        Text("Unlimited scans, deeper insights")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Theme.inkFaint)
+                                    }
+                                    Spacer(minLength: 8)
+                                    chevron
+                                }
+                                .padding(14)
+                            }
+                            .pressable()
+                        }
+                    }
+
                     section(L("s.support")) {
                         VStack(spacing: 0) {
                             navRow("questionmark.circle", "Help & Support") { SupportView() }
@@ -155,6 +218,9 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle(L("s.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
             .confirmationDialog(
                 "Delete all data?",
                 isPresented: $showEraseConfirm,

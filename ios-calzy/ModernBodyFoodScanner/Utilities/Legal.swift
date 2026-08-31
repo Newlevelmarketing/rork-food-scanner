@@ -24,7 +24,7 @@ nonisolated enum Legal {
     static let supportEmail: String = ""
 
     static let appName: String = "ModernBody"
-    static let version: String = "1.0.0"
+    static let version: String = "1.0.1"
 
     // MARK: - Disclaimers
 
@@ -47,7 +47,7 @@ nonisolated enum Legal {
 
     static let privacyPolicy: String =
         """
-        Last updated: 18 August 2026
+        Last updated: 31 August 2026
 
         SUMMARY
 
@@ -87,14 +87,29 @@ nonisolated enum Legal {
         are not used by us to build a user profile or to train models. The photo \
         that appears in your meal history is a separate copy stored on your device.
 
-        3. INFORMATION WE DO NOT COLLECT
+        3. SUBSCRIPTIONS AND PURCHASES
+
+        ModernBody Pro is optional. If you buy it, the transaction is handled by \
+        Apple and by our subscription provider, RevenueCat, which validates the \
+        purchase and tells the app whether your subscription is active.
+
+        RevenueCat receives a randomly generated, anonymous app user identifier \
+        together with the App Store purchase receipt. It does not receive your \
+        name, email address, meals, photos, weight or any other content from the \
+        app. We never see or store your payment card details; those remain with \
+        Apple.
+
+        If you never subscribe, no purchase data is created and nothing is sent to \
+        RevenueCat.
+
+        4. INFORMATION WE DO NOT COLLECT
 
         We do not collect or process: contacts, precise or coarse location, health \
         records, advertising identifiers, browsing history, crash telemetry or \
-        usage analytics. ModernBody contains no third-party analytics, attribution \
-        or advertising SDKs, and performs no tracking across apps or websites.
+        usage analytics. ModernBody contains no analytics, attribution or \
+        advertising SDKs, and performs no tracking across apps or websites.
 
-        4. PERMISSIONS
+        5. PERMISSIONS
 
         • Camera — used only while the meal scanner is open, so you can photograph \
         a meal. Declining leaves every other feature usable; you can still pick a \
@@ -108,7 +123,7 @@ nonisolated enum Legal {
         Each permission is requested at the moment the feature is first used, never \
         at launch.
 
-        5. YOUR CONTROL AND DELETION
+        6. YOUR CONTROL AND DELETION
 
         You can delete individual meals, exercises, weights and photos at any time. \
         Settings › Delete All Data permanently removes every entry, photo and \
@@ -117,12 +132,15 @@ nonisolated enum Legal {
         Because we hold no server-side copy and no account, there is nothing for us \
         to delete on your behalf.
 
-        6. CHILDREN
+        Deleting your data does not cancel a subscription. Manage subscriptions in \
+        Settings › your name › Subscriptions.
+
+        7. CHILDREN
 
         ModernBody is intended for general adult consumers and is not directed at \
         children under 13.
 
-        7. CHANGES
+        8. CHANGES
 
         If this policy changes materially, the updated text will ship with a new \
         version of the app and the date above will be revised.
@@ -132,7 +150,7 @@ nonisolated enum Legal {
 
     static let termsOfUse: String =
         """
-        Last updated: 18 August 2026
+        Last updated: 31 August 2026
 
         1. ACCEPTANCE
 
@@ -174,10 +192,30 @@ nonisolated enum Legal {
         content you create becomes visible to another person inside the app. Meal \
         names and descriptions you type are stored on your device only.
 
-        7. PRICE
+        7. SUBSCRIPTIONS AND BILLING
 
-        This version of ModernBody is provided in full at no charge. It contains no \
-        in-app purchases and no subscriptions.
+        Meal logging, the food database and manual entry are free to use. \
+        ModernBody Pro is an optional auto-renewing subscription offered in \
+        weekly, monthly and yearly terms.
+
+        The exact price, billing period and currency of each term are shown in your \
+        local currency on the subscription screen inside the app before you \
+        confirm any purchase. Prices may differ by region and may change over \
+        time; any change is shown to you before it applies.
+
+        Payment is charged to your Apple Account when you confirm the purchase. A \
+        subscription renews automatically for the same term unless you turn off \
+        auto-renew at least 24 hours before the end of the current period. Your \
+        account is charged for the renewal within 24 hours before the end of the \
+        current period.
+
+        You can view, manage and cancel your subscription, including turning off \
+        auto-renew, in Settings › your name › Subscriptions. Deleting ModernBody \
+        does not cancel a subscription.
+
+        Where a free trial or introductory offer is provided, any unused portion is \
+        forfeited when you purchase a subscription. Refunds are handled by Apple \
+        under its refund policy.
 
         8. DISCLAIMER OF WARRANTIES
 

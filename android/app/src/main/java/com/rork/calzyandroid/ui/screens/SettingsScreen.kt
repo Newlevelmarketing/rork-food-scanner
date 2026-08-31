@@ -53,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rork.calzyandroid.AppViewModel
+import com.rork.calzyandroid.BuildConfig
+import com.rork.calzyandroid.data.Legal
+import com.rork.calzyandroid.data.PurchaseManager
 import com.rork.calzyandroid.ui.components.CalzyCard
 import com.rork.calzyandroid.ui.components.CalzyToggle
 import com.rork.calzyandroid.ui.components.Hairline
@@ -66,7 +69,9 @@ import com.rork.calzyandroid.ui.sheets.GoalsWeightSheet
 import com.rork.calzyandroid.ui.sheets.LanguageSheet
 import com.rork.calzyandroid.ui.sheets.NutritionGoalsSheet
 import com.rork.calzyandroid.ui.sheets.PaywallSheet
+import com.rork.calzyandroid.ui.sheets.PrivacyPolicySheet
 import com.rork.calzyandroid.ui.sheets.RemindersSheet
+import com.rork.calzyandroid.ui.sheets.TermsOfUseSheet
 import com.rork.calzyandroid.ui.theme.CalzyColors
 
 private enum class SettingsRoute { account, nutrition, goals, reminders, activity, language }
@@ -79,9 +84,12 @@ fun SettingsScreen(viewModel: AppViewModel) {
     val context = LocalContext.current
     val data by viewModel.data.collectAsStateWithLifecycle()
     val profile = data.profile
+    val store by PurchaseManager.state.collectAsStateWithLifecycle()
 
     var route by remember { mutableStateOf<SettingsRoute?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
+    var showTerms by remember { mutableStateOf(false) }
+    var showPrivacy by remember { mutableStateOf(false) }
     var confirmErase by remember { mutableStateOf(false) }
 
     val displayName = profile.name.trim().ifEmpty { "Your profile" }
@@ -155,7 +163,7 @@ fun SettingsScreen(viewModel: AppViewModel) {
                             )
                         }
                         Text(
-                            text = if (profile.isPro) t("s.pro") else t("s.free"),
+                            text = if (store.isSubscribed) t("s.pro") else t("s.free"),
                             fontSize = 13.sp,
                             color = CalzyColors.inkFaint,
                         )
@@ -283,8 +291,11 @@ fun SettingsScreen(viewModel: AppViewModel) {
             }
         }
 
-        Section(title = t("s.subscription")) {
-            Pressable(onClick = { showPaywall = true }) {
+        // Hidden entirely in a release build with no RevenueCat key, so an
+        // unconfigured binary can never present an unpurchasable paywall.
+        if (store.isConfigured || BuildConfig.DEBUG) {
+            Section(title = t("s.subscription")) {
+                Pressable(onClick = { showPaywall = true }) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(13.dp),
@@ -325,44 +336,57 @@ fun SettingsScreen(viewModel: AppViewModel) {
                                 modifier = Modifier
                                     .clip(CircleShape)
                                     .background(
-                                        if (profile.isPro) CalzyColors.mint else CalzyColors.ink,
+                                        if (store.isSubscribed) {
+                                            CalzyColors.mint
+                                        } else {
+                                            CalzyColors.ink
+                                        },
                                     )
                                     .padding(horizontal = 7.dp, vertical = 3.dp),
                             ) {
                                 Text(
-                                    text = if (profile.isPro) t("s.active") else t("s.upgrade"),
+                                    text = if (store.isSubscribed) {
+                                        t("s.active")
+                                    } else {
+                                        t("s.upgrade")
+                                    },
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                 )
                             }
                         }
-                        Text(
-                            text = if (profile.isPro) {
-                                "Unlimited scans and insights"
-                            } else {
-                                "Unlimited scans, deeper insights"
-                            },
-                            fontSize = 12.sp,
-                            color = CalzyColors.inkFaint,
-                        )
+                            Text(
+                                text = if (store.isSubscribed) {
+                                    "Unlimited scans and insights"
+                                } else {
+                                    "Unlimited scans, deeper insights"
+                                },
+                                fontSize = 12.sp,
+                                color = CalzyColors.inkFaint,
+                            )
+                        }
+                        Chevron()
                     }
-                    Chevron()
                 }
             }
         }
 
+        // The documents ship inside the APK so they always describe this build,
+        // rather than pointing at a generic hosted page about another product.
         Section(title = t("s.support")) {
-            LinkRow(icon = Icons.Outlined.Description, title = t("s.terms")) {
-                openLink("https://rork.app/terms")
+            NavRow(icon = Icons.Outlined.Description, title = t("s.terms")) {
+                showTerms = true
             }
             RowDivider()
-            LinkRow(icon = Icons.Outlined.Lock, title = t("s.privacy")) {
-                openLink("https://rork.app/privacy")
+            NavRow(icon = Icons.Outlined.Lock, title = t("s.privacy")) {
+                showPrivacy = true
             }
-            RowDivider()
-            LinkRow(icon = Icons.Outlined.Mail, title = t("s.email")) {
-                openLink("mailto:support@calzy.app")
+            if (Legal.SUPPORT_EMAIL.isNotBlank()) {
+                RowDivider()
+                LinkRow(icon = Icons.Outlined.Mail, title = t("s.email")) {
+                    openLink("mailto:${Legal.SUPPORT_EMAIL}")
+                }
             }
         }
 
@@ -487,8 +511,21 @@ fun SettingsScreen(viewModel: AppViewModel) {
     )
     PaywallSheet(
         open = showPaywall,
-        viewModel = viewModel,
         onClose = { showPaywall = false },
+        onOpenTerms = { showTerms = true },
+        onOpenPrivacy = { showPrivacy = true },
+    )
+    // Declared after the paywall so the documents layer above it when opened
+    // from the subscription screen's compliance links.
+    TermsOfUseSheet(
+        open = showTerms,
+        onClose = { showTerms = false },
+        title = t("s.terms"),
+    )
+    PrivacyPolicySheet(
+        open = showPrivacy,
+        onClose = { showPrivacy = false },
+        title = t("s.privacy"),
     )
 }
 
