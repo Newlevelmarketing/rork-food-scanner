@@ -24,10 +24,10 @@ npm 11.12.1.
 | --- | --- | --- |
 | Install | `npm install` | Passes — 378 packages |
 | Dev server | `npm run dev` | Vite on port 8080 (`vite.config.ts:10`) |
-| Build | `npm run build` | **Passes** — 33 s, 942.95 kB JS (270 kB gzip) |
-| Typecheck | `npx tsc --noEmit -p tsconfig.app.json` | **Passes** — 0 errors |
-| Lint | `npm run lint` | **Passes** — 0 errors, 10 warnings |
-| Unit tests | `npx vitest run` | **Passes** — 1 file, 1 test |
+| Build | `npm run build` | **Passes** — 1,009.54 kB JS (287 kB gzip) |
+| Typecheck | `npm run typecheck` | **Passes** — 0 errors, under full `strict` |
+| Lint | `npm run lint` | **Passes** — 0 errors, 9 warnings |
+| Unit tests | `npx vitest run` | **Passes** — 4 files, 74 tests |
 | Browser tests | `npx vitest run --config vitest.browser.config.ts` | **FAILS** — see below |
 | Both suites | `npm test` | **FAILS** — because of the browser suite |
 
@@ -36,16 +36,18 @@ Playwright's browser binaries are not installed on this machine. It needs a one-
 `npx playwright install` (a large download, so run it deliberately). Until then
 `web/src/test/calendar.browser.test.tsx` never executes and `npm test` exits 1.
 
-**Pre-existing lint warnings (10, all pre-existing):** nine are
-`react-refresh/only-export-components`, seven of them inside generated
-`web/src/components/ui/**`. One is real and worth fixing under its own unit —
-`web/src/features/ScanSheet.tsx:116`, a `useCallback` missing `language.englishName`.
+**Lint warnings (9):** all are `react-refresh/only-export-components`, seven inside generated
+`web/src/components/ui/**`. They are HMR hints, not defects. The tenth was real — a `useCallback`
+in `ScanSheet.tsx` missing `language.englishName`, which froze the scan language — and was fixed
+in unit 08.
 
-**Test coverage is effectively zero.** `web/src/test/example.test.ts` is a placeholder. The
-domain layer — `nutrition.ts`, `dates.ts`, `image.ts`, the AI response parser — has no tests at
-all, despite being pure, easily testable functions.
+**Test coverage** now stands at 74 tests across `nutrition.ts`, `dates.ts` and the AI response
+parser (units 03, 04, 06). Still uncovered: `image.ts` (DOM canvas), `summaryCard.ts`, and
+`store/AppStore.tsx`, which needs a React testing setup.
 
-There is no typecheck script in `package.json`; run `tsc` directly as above.
+CI runs typecheck, lint, unit tests and build on every push touching `web/`
+(`.github/workflows/web-ci.yml`). Note that `npm run build` alone does **not** typecheck — Vite
+does not — so `npm run typecheck` is the gate, not the build.
 
 There are no native build commands verified here — see Known Debt in `architecture.md`, the
 iOS and Android projects cannot build from a fresh clone.

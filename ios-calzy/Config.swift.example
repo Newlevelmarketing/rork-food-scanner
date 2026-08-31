@@ -1,0 +1,27 @@
+// Template for the Rork-generated Config.swift.
+//
+// Deliberately NOT named `.swift`: `ModernBodyFoodScanner/` is a
+// PBXFileSystemSynchronizedRootGroup, so Xcode compiles every .swift file it
+// finds there automatically. A second file declaring `enum Config` would be a
+// duplicate-symbol error.
+//
+// Copy it into place with:
+//
+//     ./ios-calzy/setup-config.sh
+//
+// or by hand:
+//
+//     cp ios-calzy/Config.swift.example \
+//        ios-calzy/ModernBodyFoodScanner/Config.swift
+//
+// The destination is gitignored (ios-calzy/.gitignore) -- keep it that way.
+//
+// Only two members are referenced anywhere in the iOS target, both in
+// Services/NutritionAI.swift.
+
+import Foundation
+
+enum Config {
+    static let EXPO_PUBLIC_TOOLKIT_URL = "https://toolkit.rork.com"
+    static let EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY = ""
+}

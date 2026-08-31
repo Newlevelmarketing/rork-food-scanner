@@ -2,8 +2,6 @@
 //  ModernBodyFoodScannerApp.swift
 //  ModernBodyFoodScanner
 //
-//  Created by Rork on August 1, 2026.
-//
 
 import SwiftUI
 

@@ -52,54 +52,6 @@ export class NutritionAIError extends Error {
   }
 }
 
-const MODEL = "google/gemini-3-flash";
-const FALLBACK_MODELS = ["anthropic/claude-haiku-4.5", "openai/gpt-5-mini"];
-
-const toolkitURL = (import.meta.env.EXPO_PUBLIC_TOOLKIT_URL ?? "https://toolkit.rork.com").trim();
-const toolkitKey = (import.meta.env.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY ?? "").trim();
-
-function endpoint(): string | null {
-  if (!toolkitURL) return null;
-  const normalized = toolkitURL.endsWith("/") ? toolkitURL.slice(0, -1) : toolkitURL;
-  return `${normalized}/v2/vercel/v1/chat/completions`;
-}
-
-/**
- * Analysis needs a gateway URL *and* a key.
- *
- * `toolkitURL` falls back to the public gateway, so a build with no key would
- * otherwise report itself configured and then fail every request with a 401 —
- * surfacing "AI features are currently unavailable. Please reload the page." for
- * something no reload can fix. Requiring the key here keeps the honest
- * `notConfigured` message ("AI scanning isn't available in this build yet") for
- * the case it was written to describe.
- */
-export const isAIConfigured: boolean = endpoint() !== null && toolkitKey !== "";
-
-function systemPrompt(jester: boolean, languageName: string): string {
-  const base = [
-    "You are ModernBody, a precise nutrition estimator. Given a meal photo or description,",
-    "identify each distinct food component and estimate its nutrition for the portion shown.",
-    "",
-    "Rules:",
-    "- Estimate realistic portion sizes from visual cues (plate size, utensils, hands).",
-    "- Break composite dishes into their main components when clearly separable, otherwise return the dish as one item.",
-    '- Quantities must be human readable, e.g. "1 medium bowl", "150 g", "2 slices".',
-    "- healthScore is 1-10 where 10 is an exceptionally nutritious, whole-food meal.",
-    "- title is a short, appetising name for the whole meal (max 4 words).",
-    "- If the input clearly contains no edible food, set isFood to false and return an empty items array.",
-    "",
-    "Respond with ONLY raw JSON matching exactly this shape, no markdown fences:",
-    '{"title":string,"isFood":boolean,"healthScore":number,"items":[{"name":string,"quantity":string,"calories":number,"protein":number,"carbs":number,"fat":number}],"quip":string}',
-    "",
-    `Write title, every item name, quantity and quip in ${languageName}. Keep the JSON keys in English.`,
-  ].join("\n");
-
-  return jester
-    ? `${base}\n\nSet quip to one savage, funny one-line roast of this meal (max 14 words).`
-    : `${base}\n\nSet quip to one short, warm, encouraging note about this meal (max 12 words).`;
-}
-
 /**
  * Runtime shape of the model reply.
  *
@@ -186,70 +138,80 @@ function extractJSON(text: string): string | null {
   return null;
 }
 
-type UserContent = Array<
-  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
->;
+/**
+ * Where meal analysis is sent.
+ *
+ * Same-origin by default: the app posts to its own `/api/analyze`, which holds
+ * the model credential server-side. Nothing here carries a key, which is the
+ * whole point -- the previous design sent a shared gateway secret as a Bearer
+ * token from the client, so it shipped inside the bundle for anyone to read.
+ *
+ * Overridable for a split deployment where the proxy is not served from the
+ * same origin as the app.
+ */
+const analyzeEndpoint = (import.meta.env.VITE_ANALYZE_ENDPOINT ?? "/api/analyze").trim();
 
-async function send(
-  userContent: UserContent,
-  jesterMode: boolean,
-  languageName: string,
-): Promise<AnalysisResult> {
-  const url = endpoint();
-  // Bail before the network call rather than spending a request to learn the
-  // build has no credentials.
-  if (!url || !isAIConfigured) throw new NutritionAIError("notConfigured");
+/**
+ * Whether the client has somewhere to send an analysis request.
+ *
+ * This can no longer speak to whether AI actually *works*: the client holds no
+ * credential, so only the server knows that. An unconfigured deployment answers
+ * 503, which maps to `notConfigured` below -- the same user-facing message as
+ * before, now decided by the only party able to tell the truth about it.
+ */
+export const isAIConfigured: boolean = analyzeEndpoint !== "";
+
+/** Maps the proxy's status codes onto the existing error taxonomy. */
+function kindForStatus(status: number): NutritionAIErrorKind {
+  switch (status) {
+    case 401:
+    case 403:
+      return "authError";
+    case 402:
+      return "insufficientBalance";
+    case 413:
+      return "imageTooLarge";
+    case 429:
+      return "rateLimited";
+    case 503:
+      return "notConfigured";
+    default:
+      return "serverError";
+  }
+}
+
+interface AnalyzeBody {
+  kind: "image" | "text";
+  content: string;
+  jesterMode: boolean;
+  language: string;
+}
+
+async function send(body: AnalyzeBody): Promise<AnalysisResult> {
+  if (!isAIConfigured) throw new NutritionAIError("notConfigured");
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetch(analyzeEndpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${toolkitKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt(jesterMode, languageName) },
-          { role: "user", content: userContent },
-        ],
-        providerOptions: { gateway: { models: FALLBACK_MODELS } },
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
   } catch {
     throw new NutritionAIError("serverError");
   }
 
   if (!response.ok) {
-    switch (response.status) {
-      case 401:
-      case 403:
-        throw new NutritionAIError("authError");
-      case 402:
-        throw new NutritionAIError("insufficientBalance");
-      case 413:
-        throw new NutritionAIError("imageTooLarge");
-      case 429:
-        throw new NutritionAIError("rateLimited");
-      default:
-        console.error("[NutritionAI] request failed with status", response.status);
-        throw new NutritionAIError("serverError");
-    }
+    throw new NutritionAIError(kindForStatus(response.status));
   }
 
-  let text: string | undefined;
+  let text: string;
   try {
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    text = payload.choices?.[0]?.message?.content ?? undefined;
+    text = await response.text();
   } catch {
     throw new NutritionAIError("badResponse");
   }
 
-  if (!text) throw new NutritionAIError("badResponse");
   return parseAnalysis(text);
 }
 
@@ -258,14 +220,7 @@ export async function analyzeImage(
   jesterMode: boolean,
   languageName: string = "English",
 ): Promise<AnalysisResult> {
-  return send(
-    [
-      { type: "text", text: "Analyse this meal photo and return the JSON." },
-      { type: "image_url", image_url: { url: dataURL } },
-    ],
-    jesterMode,
-    languageName,
-  );
+  return send({ kind: "image", content: dataURL, jesterMode, language: languageName });
 }
 
 export async function analyzeText(
@@ -273,11 +228,7 @@ export async function analyzeText(
   jesterMode: boolean,
   languageName: string = "English",
 ): Promise<AnalysisResult> {
-  return send(
-    [{ type: "text", text: `Meal description: "${description}". Return the JSON.` }],
-    jesterMode,
-    languageName,
-  );
+  return send({ kind: "text", content: description, jesterMode, language: languageName });
 }
 
 export function resultToItems(result: AnalysisResult): FoodItem[] {

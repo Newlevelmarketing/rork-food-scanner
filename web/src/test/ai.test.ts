@@ -1,5 +1,7 @@
 import {
   NutritionAIError,
+  analyzeImage,
+  analyzeText,
   isAIConfigured,
   messageForError,
   parseAnalysis,
@@ -8,13 +10,24 @@ import {
 import type { AnalysisResult } from "@/lib/ai";
 
 /**
- * These tests run with no `.env` present, so `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY`
- * is undefined — which is exactly the unconfigured build this unit is about.
- *
- * Network is never reached: the point of the fix is that an unconfigured build
- * fails before `fetch`. A test that had to mock `fetch` would be testing the
- * wrong thing.
+ * The client holds no credential any more: it posts to the `/api/analyze` proxy,
+ * which keeps the model key server-side. So these tests stub `fetch` and assert
+ * the request shape and the status-to-error mapping, rather than reaching a
+ * network at all.
  */
+
+const validPayload = JSON.stringify({
+  title: "Chicken salad",
+  isFood: true,
+  healthScore: 8,
+  items: [{ name: "Chicken", quantity: "150 g", calories: 250, protein: 30, carbs: 0, fat: 12 }],
+});
+
+function stubFetch(status: number, body = ""): ReturnType<typeof vi.fn> {
+  const spy = vi.fn(async () => new Response(body, { status }));
+  vi.stubGlobal("fetch", spy);
+  return spy;
+}
 
 function resultFor(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
   return {
@@ -26,42 +39,129 @@ function resultFor(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
   };
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("isAIConfigured", () => {
-  it("is false when no gateway key is present", () => {
-    // The gateway URL falls back to a public default, so before this fix the
-    // flag was unconditionally true and the app claimed AI was available.
-    expect(isAIConfigured).toBe(false);
+  it("is true, because the client always has a same-origin endpoint", () => {
+    // It no longer claims AI *works* - the client holds no credential, so only
+    // the server can know that. An unconfigured server answers 503.
+    expect(isAIConfigured).toBe(true);
   });
 });
 
-describe("unconfigured builds", () => {
-  it("reports notConfigured rather than an auth failure", async () => {
-    const { analyzeText } = await import("@/lib/ai");
+describe("request shape", () => {
+  it("posts an image as a data URL with the language and jester flag", async () => {
+    const spy = stubFetch(200, validPayload);
+    await analyzeImage("data:image/jpeg;base64,AAAA", true, "Spanish");
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/analyze");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      kind: "image",
+      content: "data:image/jpeg;base64,AAAA",
+      jesterMode: true,
+      language: "Spanish",
+    });
+  });
+
+  it("posts a description as text", async () => {
+    const spy = stubFetch(200, validPayload);
+    await analyzeText("two eggs", false, "French");
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      kind: "text",
+      content: "two eggs",
+      jesterMode: false,
+      language: "French",
+    });
+  });
+
+  it("sends no authorization header, because it holds no credential", async () => {
+    const spy = stubFetch(200, validPayload);
+    await analyzeText("two eggs", false);
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    const headers = (init.headers ?? {}) as Record<string, string>;
+    expect(Object.keys(headers).map((key) => key.toLowerCase())).not.toContain("authorization");
+  });
+
+  it("defaults the language to English", async () => {
+    const spy = stubFetch(200, validPayload);
+    await analyzeText("two eggs", false);
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).language).toBe("English");
+  });
+
+  it("returns the parsed result on success", async () => {
+    stubFetch(200, validPayload);
+    const result = await analyzeText("chicken salad", false);
+    expect(result.title).toBe("Chicken salad");
+    expect(result.items[0].calories).toBe(250);
+  });
+});
+
+describe("status mapping", () => {
+  const kindFor = async (status: number): Promise<string> => {
+    stubFetch(status, "{}");
+    try {
+      await analyzeText("two eggs", false);
+      throw new Error("expected a rejection");
+    } catch (error) {
+      if (error instanceof NutritionAIError) return error.kind;
+      throw error;
+    }
+  };
+
+  it("reports an unconfigured server honestly", async () => {
+    // 503 is what api/analyze.ts returns when GEMINI_API_KEY is unset. The user
+    // sees "AI scanning isn't available in this build yet" - not a suggestion to
+    // reload the page, which cannot supply a server-side key.
+    expect(await kindFor(503)).toBe("notConfigured");
+    expect(messageForError(new NutritionAIError("notConfigured"))).not.toContain("reload");
+  });
+
+  it("maps auth failures", async () => {
+    expect(await kindFor(401)).toBe("authError");
+    expect(await kindFor(403)).toBe("authError");
+  });
+
+  it("maps quota exhaustion", async () => {
+    expect(await kindFor(402)).toBe("insufficientBalance");
+  });
+
+  it("maps an oversized image", async () => {
+    expect(await kindFor(413)).toBe("imageTooLarge");
+  });
+
+  it("maps rate limiting", async () => {
+    expect(await kindFor(429)).toBe("rateLimited");
+  });
+
+  it("falls back to a generic server error", async () => {
+    expect(await kindFor(500)).toBe("serverError");
+    expect(await kindFor(502)).toBe("serverError");
+  });
+
+  it("treats a network failure as a server error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("network down");
+    }));
     await expect(analyzeText("two eggs", false)).rejects.toBeInstanceOf(NutritionAIError);
   });
 
-  it("uses the honest message, not 'please reload the page'", async () => {
-    const { analyzeText } = await import("@/lib/ai");
+  it("still reports notFood for a well-formed reply containing no food", async () => {
+    stubFetch(200, JSON.stringify({ title: "Bicycle", isFood: false, healthScore: 1, items: [] }));
     try {
-      await analyzeText("two eggs", false);
-      throw new Error("expected analyzeText to reject");
+      await analyzeText("my bike", false);
+      throw new Error("expected a rejection");
     } catch (error) {
-      expect(error).toBeInstanceOf(NutritionAIError);
-      expect((error as NutritionAIError).kind).toBe("notConfigured");
-      expect((error as NutritionAIError).message).toBe(
-        "AI scanning isn't available in this build yet.",
-      );
-      expect((error as NutritionAIError).message).not.toContain("reload");
-    }
-  });
-
-  it("rejects image analysis the same way", async () => {
-    const { analyzeImage } = await import("@/lib/ai");
-    try {
-      await analyzeImage("data:image/jpeg;base64,AAAA", false);
-      throw new Error("expected analyzeImage to reject");
-    } catch (error) {
-      expect((error as NutritionAIError).kind).toBe("notConfigured");
+      expect((error as NutritionAIError).kind).toBe("notFood");
     }
   });
 });

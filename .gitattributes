@@ -1,0 +1,30 @@
+# This repo is worked on from both Windows and macOS. Without these rules the
+# line endings a file ends up with depend on whoever committed it and what their
+# core.autocrlf happened to be.
+
+* text=auto
+
+# Shell scripts must be LF or the shebang breaks: a CRLF script fails on macOS
+# and Linux with a confusing "bad interpreter" error.
+*.sh text eol=lf
+
+# Sources and config, kept LF so diffs stay clean across platforms.
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.css  text eol=lf
+*.swift text eol=lf
+*.kt   text eol=lf
+*.kts  text eol=lf
+
+# Windows-only tooling that genuinely wants CRLF.
+*.bat text eol=crlf
+gradlew.bat text eol=crlf
+
+# Binary, never touched.
+*.png binary
+*.jpg binary
+*.jar binary

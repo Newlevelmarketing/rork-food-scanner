@@ -4,16 +4,34 @@ Update this file after every meaningful implementation or project change.
 
 ## Current Phase
 
-- **Unit 01 in progress — App Store review response. Brain onboarding Phase 3 still open.**
+- **De-Rork in progress (units 11–16). Unit 11 done; unit 12 next, gated on a Mac build.**
+- Apple's Guideline 2.1 reply (unit 01) is still open, blocked on a physical iPhone.
 
 ## Current Goal
 
-Reply to Apple's Guideline 2.1 "Information Needed" message of 2026-08-10 so the ModernBody
-1.0.0 iOS submission can continue review.
+Make the project independent of Rork. The human scoped this as **"everything"** — runtime gateway,
+app identity, config generation and cosmetic traces — with **Google Gemini** chosen as the direct
+provider.
 
-This unit was chosen by circumstance rather than by planning, and it is the right choice: it
-changes **no application code**, so it proceeds cleanly even with the Rork-overwrite question
-(Q1) still unresolved.
+Planned sequence:
+
+| Unit | Work | Status |
+| --- | --- | --- |
+| 11 | Gemini proxy; web client off the gateway | **Done** |
+| 12 | iOS and Android clients onto the proxy | Next — needs the Mac build first |
+| 13 | Replace Rork-generated `Config.swift` / `Config.kt` | Pending |
+| 14 | Rename the Android package off `com.rork.calzyandroid` | Pending |
+| 15 | Rename the iOS bundle id off `app.rork.…` | **Blocked** — see below |
+| 16 | `rork.json` and remaining cosmetic traces | Pending |
+
+**Unit 15 is blocked on a question that was answered "not sure":** whether
+`app.rork.kffuebxmbishdc4eli446` is already registered in App Store Connect. If it is, it is
+permanent and unit 15 must be cancelled — renaming would create a separate app and lose the review
+history. If it is not, renaming must happen before any submission. This needs settling before the
+Apple reply goes out, not after.
+
+Note the deliberate ordering: the identity renames (14, 15) come last, because they are mechanical
+and permanent, while the proxy work is reversible and unblocks the security fix.
 
 ## Completed
 
@@ -53,6 +71,228 @@ The browser-suite failure is environmental, not a code defect: it needs a one-ti
 Native apps were **not** built. They cannot be, from a clean clone — see Known Debt.
 
 ## Recently Completed
+
+**Unit 17 — iOS Scan Defects** (`context/feature-specs/17-ios-scan-defects.md`) —
+**implemented but UNVERIFIED.** Needs a rebuild on the Mac.
+
+An iPhone 17 Pro / iOS 26.5 Simulator test gave a **green baseline** — build, all six onboarding
+screens, dashboard, calculated targets, relaunch persistence — with three failures against it, two
+of which affect physical devices as well.
+
+1. **Empty key reported the wrong error.** Confirmed exactly as predicted in unit 04 —
+   `isConfigured` checked only the URL, which defaults to the public gateway, so a keyless build
+   sent an empty bearer token and got a 401. Now requires a key and bails before the request.
+2. **"Preparing camera…" forever.** `placeholder` branched only on `.denied`, so `.unavailable` —
+   a *terminal* state — rendered as a transient one. Not Simulator-only: any device whose camera
+   cannot be configured hits the same dead end. It now has its own copy naming the two things that
+   still work.
+3. **"Try again" left a frozen preview.** Two causes: `stop()` never cleared `status`, so the view
+   rendered a preview layer over a stopped session; and retry never restarted the camera nor
+   cleared `capturedImage`/`pickerItem`, both watched with `onChange` — meaning **re-picking the
+   same photo would not have fired at all.**
+
+**Correction to the test's pass condition:** the report expected *"AI scanning isn't available in
+this build yet."* That is the **web** string. iOS has its own, better copy —
+*"Meal analysis is unavailable right now. You can still add a meal by searching the food
+database."* — which names a working alternative. That is what a pass looks like on iOS.
+
+**No Swift was compiled.** There is no Xcode here. Changes were traced to the reported code paths,
+and the switch-expression syntax matches what `NutritionAI.swift:20` already uses. **Rebuild and
+run the script in the spec before trusting any of it.**
+
+**Not done, deliberately:** the actor-isolation and camera-concurrency warnings. They were reported
+but not quoted, and guessing at concurrency annotations in a file that cannot be compiled here is
+how one warning becomes a build failure. **Paste them and they become their own unit.**
+
+**Still deferred:** moving iOS onto the Gemini proxy. The proxy is not deployed, so iOS would point
+at a URL that does not exist. iOS stays on the Rork gateway until there is a live endpoint — which
+also means **the leaked Rork key cannot be rotated yet.**
+
+
+**Unit 16 — Android Config Bootstrap and Cosmetic De-Rork**
+(`context/feature-specs/16-cosmetic-derork.md`) — complete.
+
+Everything in the de-Rork that needs neither a Mac, an Android SDK, nor a decision is now done.
+
+- `android/setup-config.sh` + `Config.kt.example` — the Android half of the config bootstrap. It
+  derives the package from `MainActivity.kt` rather than hardcoding it, so it survives unit 14's
+  rename. Tested; output confirmed gitignored.
+- `rork.json` deleted — checked first, and it was referenced **only in documentation**. No build,
+  script or source reads it.
+- `web/package.json` name: `rork-web-app` → `modernbody-web`.
+- `.rork/` cache entries and `rork-eslint.config.js` removed from all three `.gitignore` files.
+- `// Created by Rork on …` headers stripped from four Swift files. **Comment-only** —
+  `git diff --stat` confirms two deleted lines per file. A removed comment cannot change
+  compilation, which is why this was acceptable without a compiler, unlike unit 12.
+
+Checks unchanged: typecheck 0, lint 9 warnings, 158 tests, build passes.
+
+### Rork surface after this unit
+
+| Area | Remaining | Blocked on |
+| --- | --- | --- |
+| `web/src`, `web/api` | **None real** | — (`AIErrorKind` matches "rorK" incidentally) |
+| `ios-calzy` | 3 files | Unit 12 (proxy) and unit 15 (bundle id) |
+| `android` | 36 files | Unit 14 — 35 are the package name |
+
+**There is no unblocked de-Rork work left.** Everything remaining maps to:
+
+- **Unit 12** — native clients onto the proxy. Needs a green Mac build first, so a Swift or Kotlin
+  mistake is caught against a project known to compile. This is also what finally lets the leaked
+  Rork key be rotated.
+- **Unit 14** — Android package rename. Needs a target namespace nobody has chosen.
+- **Unit 15** — iOS bundle id. Needs the App Store Connect answer, which is permanent either way.
+
+
+**Unit 11a — Runnable From a Clean Clone** (`context/feature-specs/11a-runnable-from-a-clean-clone.md`)
+— complete. Done so the human's Mac works on first pull.
+
+Four traps stood between a clean clone and a running app, none discoverable from the repo:
+
+1. **`vite dev` did not serve `/api/*`.** After unit 11 the scanner posts to `/api/analyze`, which
+   only the *host* runs in production — locally the request fell through to the SPA fallback and
+   failed to parse. **Scanning was dead in development.** A dev-server plugin now mounts the real
+   handler via `ssrLoadModule`, so local dev exercises the same code the deployment does.
+2. **iOS did not compile from a clean clone.** `ios-calzy/setup-config.sh` creates the gitignored
+   `Config.swift` from a committed template, refuses to overwrite, and is one command.
+3. **Node version.** `.nvmrc` pins 24 and `engines` records `>=20.12.0`, so the v18-via-nvm failure
+   stops looking like a code fault.
+4. **No README at all.** The repo now has one: run instructions per platform, the env-var rules,
+   deploy settings, and a map of the brain.
+
+**Verified against a live dev server**, exercising the real handler — not a stub:
+
+| Request | Result |
+| --- | --- |
+| Valid body, no key | **503 `notConfigured`** |
+| `kind: "audio"` | **400** with a specific message |
+| Whitespace content | **400** |
+| Image that is not a data URL | **400** |
+| Valid body, bad key | **502** — the request genuinely reached Gemini |
+| `GET` | **405** |
+
+Also confirmed `GEMINI_API_KEY` never appears in `dist/`, and `setup-config.sh` output is ignored
+by `git check-ignore`. 158 tests, typecheck 0, lint 9 warnings, build passes.
+
+**Finding:** an invalid API key surfaces to users as "Something went wrong" rather than an auth
+error, because Google returns 400 for a bad key and this proxy treats 400 as our fault. That is the
+right user-facing choice — the alternative tells them to reload, which cannot supply a server key —
+but it makes the likeliest deployment failure look generic. The server log now says
+`check GEMINI_API_KEY and GEMINI_MODEL` on 400/403.
+
+
+**Unit 11 — Gemini Proxy** (`context/feature-specs/11-gemini-proxy.md`) — complete for web.
+**First unit of the de-Rork project**, which the human scoped as "everything", with Gemini chosen
+as the direct provider.
+
+`toolkit.rork.com` was the only runtime dependency on Rork, and the credential it required shipped
+inside the web bundle and both app binaries. Independence and the top Known Debt item were the
+same problem, so they were fixed together.
+
+`web/api/analyze.ts` now calls Gemini directly with the key held server-side. The web client posts
+`{ kind, content, jesterMode, language }` to `/api/analyze` and holds no credential at all.
+
+**Verified:**
+
+- Zero occurrences of "rork" in the built bundle; no `EXPO_PUBLIC` reference anywhere.
+- **The system prompt no longer ships to users.** It lived in three clients, had to be edited
+  three times, and was downloaded by every user. Now one server-side copy, changeable without
+  releasing an app.
+- Bundle got *smaller*: 1,009.54 kB → 1,007.63 kB.
+- 158 tests across 7 files, up from 118. Typecheck 0, lint 9 warnings, build passes.
+- `api/` is now typechecked too, so the proxy is not an unchecked blind spot.
+
+**Not verified, and it matters:** no end-to-end call to Gemini was made. There is no API key here
+and `vite dev` does not serve `/api/*`. **Deploy, then scan once, before trusting it.**
+
+**Confirm the model id before deploying.** `GEMINI_MODEL` defaults to `gemini-2.5-flash`; check it
+against Google's current documentation. It is env-configurable so a correction is config, not code.
+
+**Invariant 1 was restated, not broken** — "no backend" became "no user data is stored off the
+device". The proxy is stateless. The shipped privacy policy already described this accurately, so
+no legal copy changed. Both decisions are in `context/decision-log.md`.
+
+**Still on the Rork gateway: iOS and Android.** Nothing is broken mid-migration — both keep working
+until unit 12. **Rotate the Rork key once all three clients are off it**; anything already shipped
+has leaked it.
+
+**Toolchain trap found:** Git Bash resolves Node **v18.20.4** via nvm while PowerShell uses
+**v24.15.0**. Vite 8 needs 20.12+, so the test runner dies under the nvm default with a
+`styleText` import error that looks like a code fault. A `.nvmrc` would prevent this; not added
+yet, since it is unrelated to this unit.
+
+
+**Unit 10 — i18n and Food-Search Tests** (`context/feature-specs/10-i18n-and-food-search-tests.md`)
+— complete.
+
+Localisation is one of this product's largest surfaces — 32 languages, three right-to-left — and
+none of it was tested. Unit 08 had already found a shipped language bug, so the area warranted
+attention rather than trust.
+
+**118 tests across 6 files, up from 74. All pass, no defect found.**
+
+- `i18n.test.ts` — the language table, `languageFor`, `translate` and its two-step fallback, and
+  `browserLanguage` across every branch: `zh-TW` and `zh-Hant-HK` → Traditional, `zh-CN` and bare
+  `zh` → Simplified, `no` → `nb`, unsupported tags falling through to the next preference, and
+  English for an empty list or absent `navigator`.
+- `foods.test.ts` — the bundled table's integrity, search matching and ranking, `foodToItem`, and
+  `presetCalories` weight scaling.
+
+**Catalogue integrity is now enforced, not assumed.** Measured first: 32 tables, 52 keys each,
+identical key sets, no empty values. `context/execution-standards.md` requires shipped copy to
+reach all 32 locales — that rule was honour-system and is now a failing test.
+
+**A note on test quality.** The ranking test was first written with an early return for the case
+where no query exercises both match kinds, which would have let it pass while asserting nothing.
+Checked rather than assumed: the table yields 6 rankable queries, the first being `"protein"` with
+2 name matches against 9 tag-only. The escape hatch was replaced with an explicit assertion, so a
+future data change that makes ranking untestable fails loudly instead of going quietly green.
+
+No new dependencies. `navigator` is stubbed with `vi.stubGlobal` rather than pulling in a DOM.
+
+**Still untested and now the highest-value target:** `store/AppStore.tsx` — streaks, 7-day
+averages, the weight `isLatest` rule, water undo, case-insensitive saved-food matching. It needs
+`@testing-library/react` plus `jsdom` or `happy-dom`, and adding devDependencies carries a
+wrinkle worth deciding separately: the lockfile is `bun.lock` with no `package-lock.json`, so an
+npm-added dependency would not appear in the lockfile CI installs from.
+
+
+**Unit 09 — Continuous Integration** (`context/feature-specs/09-continuous-integration.md`) —
+complete, with a stated verification limit.
+
+Unit 07 found that nothing enforced any check: `vite build` does not typecheck, and there was no
+CI. Strict TypeScript and 74 tests only protect the codebase if something runs them.
+`.github/workflows/web-ci.yml` now runs typecheck, lint, unit tests and build on every push and PR
+touching `web/`, path-filtered so documentation commits do not burn minutes.
+
+**The browser suite is deliberately excluded.** Adding `npx playwright install` would have looked
+like fixing the one failing check, but that suite **has never been observed to pass** — it could
+not start locally. Its result is unknown, not green, and asserting it in CI would be a claim
+nobody has verified. Enabling it is a follow-up once someone runs `npx playwright install` and
+confirms.
+
+**Verification limit:** the workflow itself **has not been observed to run.** GitHub Actions
+cannot be executed from here and the repo is private, so its status cannot be read back. Every
+command in it passes locally and the YAML parses — but **check the first run before trusting it.**
+A failure there will be environmental, not a code defect.
+
+**Unit 08 — ScanSheet Stale Language** (`context/feature-specs/08-scansheet-stale-language.md`) —
+complete.
+
+Recorded at onboarding as "the one real warning among the ten." On reading, it was a **user-visible
+bug in a 32-language app.** `handle` passes `language.englishName` to the model to choose the
+reply language, but omitted it from its `useCallback` deps. `ScanSheet` is mounted permanently by
+`Index.tsx:61` with an `open` prop, so the stale closure survived the whole session: change
+language in Settings, scan a meal, and item names came back in the *previous* language while the
+interface was translated.
+
+One dependency added, with a comment recording the failure so nobody tidies it away.
+
+**Baseline changed: lint is now 9 warnings, not 10.** All nine are
+`react-refresh/only-export-components`, seven in generated `components/ui/**`. They are HMR hints,
+not defects. `context/execution-standards.md` updated so future units are not measured against a
+stale number.
+
 
 **Unit 07 — Enable Strict TypeScript** (`context/feature-specs/07-enable-strict-typescript.md`) —
 complete.

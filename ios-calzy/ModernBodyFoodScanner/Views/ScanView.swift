@@ -69,6 +69,13 @@ struct ScanView: View {
             Button("Try again") {
                 errorMessage = nil
                 withAnimation { stagedImage = nil }
+                // handle() stops the session, so retrying has to restart it or the
+                // preview stays dead. Clearing the two sources also matters: they
+                // are watched with onChange, so re-picking the same photo or
+                // re-capturing an identical frame would otherwise not fire.
+                camera.capturedImage = nil
+                pickerItem = nil
+                Task { await camera.start() }
             }
             Button("Close", role: .cancel) { dismiss() }
         } message: {
@@ -80,12 +87,23 @@ struct ScanView: View {
 
     private var placeholder: some View {
         VStack(spacing: 14) {
-            Image(systemName: camera.status == .denied ? "lock.slash" : "camera.metering.unknown")
+            // .unavailable is terminal, not transient. Showing "Preparing camera…"
+            // for it leaves the user waiting forever for something that is never
+            // going to happen - on the Simulator, and on any device whose camera
+            // cannot be configured.
+            Image(systemName: placeholderIcon)
                 .font(.system(size: 42, weight: .light))
                 .foregroundStyle(.white.opacity(0.65))
-            Text(camera.status == .denied ? "Camera access is off" : "Preparing camera…")
+            Text(placeholderTitle)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.white)
+            if camera.status == .unavailable {
+                Text("You can still pick a photo from your library, or add a meal by searching the food database.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 44)
+            }
             if camera.status == .denied {
                 Text("Enable camera access in Settings to scan meals, or pick a photo from your library.")
                     .font(.system(size: 14))
@@ -103,6 +121,22 @@ struct ScanView: View {
                 .padding(.vertical, 11)
                 .background(.white, in: Capsule())
             }
+        }
+    }
+
+    private var placeholderIcon: String {
+        switch camera.status {
+        case .denied: "lock.slash"
+        case .unavailable: "camera.fill"
+        default: "camera.metering.unknown"
+        }
+    }
+
+    private var placeholderTitle: String {
+        switch camera.status {
+        case .denied: "Camera access is off"
+        case .unavailable: "Camera unavailable"
+        default: "Preparing camera…"
         }
     }
 

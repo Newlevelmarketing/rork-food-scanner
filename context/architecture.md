@@ -35,11 +35,13 @@ The repo is a [Rork](https://rork.com) multi-app export. `rork.json` declares th
 | Web tests | Vitest 4 + Playwright browser mode | Unit + browser | `web/vitest.config.ts`, `web/vitest.browser.config.ts` |
 | iOS | Swift / SwiftUI | Native iOS app | `ios-calzy/ModernBodyFoodScanner.xcodeproj` |
 | Android | Kotlin / Jetpack Compose / Gradle KTS | Native Android app | `android/app/build.gradle.kts` |
-| AI | Rork toolkit gateway → `google/gemini-3-flash` | Nutrition estimation | `web/src/lib/ai.ts:53-63` |
+| AI (web) | Own proxy → Google Gemini, direct | Nutrition estimation | `web/api/analyze.ts` |
+| AI (native) | Rork toolkit gateway, **until unit 12** | Nutrition estimation | `NutritionAI.swift:90`, `AiService.kt:74-77` |
 | Persistence | Device-local only | All user data | `web/src/store/AppStore.tsx:37` |
 
-AI fallback chain: `anthropic/claude-haiku-4.5`, then `openai/gpt-5-mini`
-(`web/src/lib/ai.ts:54`).
+The native clients still use the gateway's fallback chain (`anthropic/claude-haiku-4.5`, then
+`openai/gpt-5-mini`). The web proxy calls a single Gemini model, set by `GEMINI_MODEL`. Adding a
+fallback chain to the proxy is possible but was not in unit 11's scope.
 
 ## System Boundaries
 
@@ -63,14 +65,16 @@ ios-calzy/Calzy/Utilities/Theme.swift". iOS is the reference implementation.
 
 ## Data / Knowledge / Asset Model
 
-**There is no backend and no account system.** All user data is device-local.
+**There is no account system, and no user data is stored server-side.** All user data is
+device-local. Since unit 11 there *is* one server component — a stateless analysis proxy
+(`web/api/analyze.ts`) that holds the model credential and persists nothing.
 
 - **Web storage**: a single `localStorage` key, `calzy-data-v1`, holding the whole `AppData`
   object, written on a 220 ms debounce (`web/src/store/AppStore.tsx:37,139-151`).
 - **Domain model** (`web/src/lib/types.ts`): `AppData` = `profile`, `meals`, `exercises`,
   `water`, `weights`, `photos`, `saved`.
 - **Photos**: meal and progress photos are stored as base64 JPEG data URLs inside that same
-  key. Full-resolution images (≤2.6 MB) are only sent to the AI gateway; a 420 px thumbnail at
+  key. Full-resolution images (≤2.6 MB) are only sent for analysis; a 420 px thumbnail at
   quality 0.72 is what gets persisted (`web/src/lib/image.ts:40-67`).
 - **Bundled reference data**: `web/src/data/foods.json` — 100 foods for offline search.
   `web/src/data/strings.json` — 66 KB of UI translations.
@@ -87,12 +91,18 @@ ios-calzy/Calzy/Utilities/Theme.swift". iOS is the reference implementation.
 
 | System | Connected To | Purpose | Evidence |
 | --- | --- | --- | --- |
-| Rork toolkit gateway | all three apps | Vision + text nutrition analysis | `web/src/lib/ai.ts:62`, `ios-calzy/.../NutritionAI.swift:90`, `android/.../AiService.kt:74-77` |
+| **Own proxy → Google Gemini** | web | Vision + text nutrition analysis | `web/api/analyze.ts` |
+| Rork toolkit gateway | iOS, Android **(until unit 12)** | Vision + text nutrition analysis | `ios-calzy/.../NutritionAI.swift:90`, `android/.../AiService.kt:74-77` |
 | Google Fonts | web | Nunito webfont | `web/src/index.css:1` |
 
-Environment variable **names** in use (values are never committed; `.env` is gitignored):
-`EXPO_PUBLIC_TOOLKIT_URL`, `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY`, `EXPO_PUBLIC_PROJECT_ID`
-(`web/src/vite-env.d.ts`).
+Environment variable **names** in use (values are never committed):
+
+- **Server-side only:** `GEMINI_API_KEY`, `GEMINI_MODEL` — read in `web/api/analyze.ts`. These must
+  never be given a `VITE_` or `EXPO_PUBLIC_` prefix; Vite inlines both into the client bundle,
+  which is precisely how the previous key leaked.
+- **Client-side:** `VITE_ANALYZE_ENDPOINT` (optional, a URL, not a credential).
+- **Native, until unit 12:** `EXPO_PUBLIC_TOOLKIT_URL`, `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY` in
+  the Rork-generated `Config.swift` / `Config.kt`.
 
 ## Critical Flows
 
@@ -101,8 +111,9 @@ Environment variable **names** in use (values are never committed; `.env` is git
 1. User opens the scan sheet from the Home tab (`Index.tsx:61-65`).
 2. Camera frame or picked image is downscaled down a resize/quality ladder until it fits the
    2.6 MB budget (`lib/image.ts:40-61`).
-3. The data URL is POSTed to the toolkit gateway with a system prompt demanding raw JSON
-   (`lib/ai.ts:111-183`).
+3. The data URL is POSTed to `/api/analyze` (`lib/ai.ts`). The proxy attaches the system prompt
+   — which lives server-side, so it is neither shipped to users nor duplicated per platform — and
+   calls Gemini with `responseMimeType: "application/json"`.
 4. The first balanced JSON object is extracted from the reply, tolerating markdown fences
    (`lib/ai.ts:92-105`).
 5. `isFood === false` or an empty item list raises `notFood` (`lib/ai.ts:179-181`).
@@ -123,9 +134,15 @@ Environment variable **names** in use (values are never committed; `.env` is git
 > **Proposed from observed behavior — pending human ratification.** These are the rules the code
 > currently upholds. Confirm or strike each one before treating it as binding.
 
-1. **All user data stays on the device.** The only outbound request carrying user content is the
-   nutrition analysis call to the toolkit gateway. No accounts, no analytics upload, no backend
-   persistence.
+1. **No user data is stored off the device.** The only outbound request carrying user content is
+   the meal-analysis call, which since unit 11 goes to this project's own proxy
+   (`web/api/analyze.ts`) and on to Google Gemini. The proxy is stateless: it holds the model
+   credential, forwards one photo or description, and stores nothing. No accounts, no analytics
+   upload, no backend persistence.
+
+   > Restated in unit 11. The original wording said "no backend", which the proxy would have
+   > broken. The property that actually matters — nothing about a user is *retained* anywhere but
+   > their device — is preserved. See `context/decision-log.md`.
 2. **Full-resolution photos are never persisted.** Only `toThumbnail` output enters storage;
    full-size images exist in memory long enough to reach the AI gateway.
 3. **The three platforms stay in sync as one product.** A change to the domain model in
@@ -160,7 +177,7 @@ Environment variable **names** in use (values are never committed; `.env` is git
 
 | Area | Problem | Risk If Touched |
 | --- | --- | --- |
-| `web/src/lib/ai.ts:56-57`, `NutritionAI.swift:184`, `AiService.kt:80-81` | The toolkit API key is a **client-side credential** on all three platforms, sent as a `Bearer` token straight from the client. `vite.config.ts:23` exposes `EXPO_PUBLIC_*` to the bundle, so on web it is inlined into shipped JS; on native it ships inside the binary. There is no server-side proxy. | Anyone can extract the key and spend the account's AI credits. Fixing it properly means introducing a backend, which changes the "no backend" shape of the system. |
+| ~~`web/src/lib/ai.ts`~~ **resolved for web (unit 11)**; still live in `NutritionAI.swift:184` and `AiService.kt:80-81` | The toolkit API key was a **client-side credential** on all three platforms, sent as a `Bearer` token straight from the client. The web client now posts to `web/api/analyze.ts`, holds no credential, and `envPrefix` no longer exposes `EXPO_PUBLIC_*`. **The two native apps still send the key** until unit 12. | Until unit 12 ships, the key remains extractable from both app binaries. Rotate it once all three clients are migrated — anything already shipped has leaked it. |
 | `ios-calzy/.gitignore`, `android/.gitignore` | `Config.swift` and `Config.kt` are generated by Rork and gitignored. | **The native apps cannot be built from a fresh clone.** Only `web` is reproducible from git alone. |
 | `web/src/lib/ai.ts:56,65` | `toolkitURL` defaults to the public gateway, so `isAIConfigured` is `true` even with no key set. A missing key produces a 401 → `authError` ("please reload the page") instead of the honest `notConfigured` message. | A fresh clone silently presents AI as available, then fails misleadingly. |
 | `web/src/store/AppStore.tsx:143-147` | A quota overflow is caught and `console.warn`ed. Photos are base64 in the same key as everything else. | Once the quota is hit, persistence stops silently — the user keeps logging and loses it all on reload. No user-facing signal. |

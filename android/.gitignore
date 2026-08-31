@@ -31,8 +31,6 @@ local.properties
 *.swp
 *~
 
-# Rork
-.rork/
+# Generated config, never commit
 .env
-rork-eslint.config.js
 app/src/main/java/**/Config.kt

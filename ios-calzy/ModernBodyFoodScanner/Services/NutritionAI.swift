@@ -93,7 +93,21 @@ nonisolated struct NutritionAI {
         return URL(string: "\(normalized)/v2/vercel/v1/chat/completions")
     }
 
-    static var isConfigured: Bool { endpoint != nil }
+    private static var apiKey: String {
+        Config.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Analysis needs an endpoint *and* a key.
+    ///
+    /// `Config.EXPO_PUBLIC_TOOLKIT_URL` falls back to the public gateway, so a
+    /// build with no key would otherwise report itself configured, send an empty
+    /// bearer token, collect a 401 and surface "Meal analysis is temporarily
+    /// unavailable. Please try again later." - for a missing build-time
+    /// credential that no amount of retrying can supply.
+    ///
+    /// Requiring the key here reaches `.notConfigured`, which tells the user the
+    /// truth and points them at the food database instead.
+    static var isConfigured: Bool { endpoint != nil && !apiKey.isEmpty }
 
     private static func systemPrompt(jester: Bool, language: String) -> String {
         var prompt = """
@@ -164,7 +178,9 @@ nonisolated struct NutritionAI {
         jesterMode: Bool,
         language: String
     ) async throws -> AnalysisResult {
-        guard let endpoint else { throw NutritionAIError.notConfigured }
+        // Bail before the request rather than spending one to learn the build
+        // has no credentials.
+        guard let endpoint, !apiKey.isEmpty else { throw NutritionAIError.notConfigured }
 
         let body: [String: Any] = [
             "model": model,
@@ -180,10 +196,7 @@ nonisolated struct NutritionAI {
         request.httpMethod = "POST"
         request.timeoutInterval = 60
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(
-            "Bearer \(Config.EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY)",
-            forHTTPHeaderField: "Authorization"
-        )
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let data: Data

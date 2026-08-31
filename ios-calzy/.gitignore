@@ -28,7 +28,6 @@ Package.resolved
 *.swp
 *~
 
-# Rork
-.rork/
+# Generated config, never commit
 .env
 Config.swift

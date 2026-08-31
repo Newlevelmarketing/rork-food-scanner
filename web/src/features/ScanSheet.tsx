@@ -113,7 +113,11 @@ export function ScanSheet({
         setError(messageForError(analysisError));
       }
     },
-    [onResult, stopCamera, store.profile.jesterMode],
+    // language.englishName is passed to the model to choose the reply language.
+    // Omitting it here froze the value captured when the sheet first mounted, so
+    // switching language in Settings and then scanning returned item names in the
+    // previous language.
+    [onResult, stopCamera, store.profile.jesterMode, language.englishName],
   );
 
   const shoot = (): void => {

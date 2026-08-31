@@ -1,9 +1,14 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly EXPO_PUBLIC_TOOLKIT_URL?: string;
-  readonly EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY?: string;
-  readonly EXPO_PUBLIC_PROJECT_ID?: string;
+  /**
+   * Where meal analysis is posted. Defaults to the same-origin `/api/analyze`.
+   *
+   * Set this only for a split deployment where the proxy is not served from the
+   * app's own origin. It is a URL, not a credential -- no secret may ever be
+   * given a `VITE_` prefix, because Vite inlines those into the client bundle.
+   */
+  readonly VITE_ANALYZE_ENDPOINT?: string;
 }
 
 interface ImportMeta {
