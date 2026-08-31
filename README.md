@@ -82,6 +82,10 @@ iPhone-only, portrait-only, iOS 18 minimum.
 
 Full walkthrough: [`submission/mac-setup-runbook.md`](submission/mac-setup-runbook.md).
 
+**Handing the app to someone else to test on their iPhone?** Send them
+[`TEST-ON-IPHONE.md`](TEST-ON-IPHONE.md) — it assumes no knowledge of the project and covers
+the signing traps a second machine hits.
+
 ---
 
 ## Run the Android app
