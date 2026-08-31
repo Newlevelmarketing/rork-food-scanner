@@ -2,7 +2,6 @@ import {
   Bell,
   ChevronRight,
   Footprints,
-  Heart,
   Lock,
   Mail,
   Scale,
@@ -114,28 +113,6 @@ export function Settings(): JSX.Element {
               </span>
             }
           />
-        </Section>
-
-        <Section title={t("s.integrations")}>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.tap();
-              store.setProfile({ healthSynced: !profile.healthSynced });
-            }}
-            className="pressable flex w-full items-center gap-[13px] p-[14px] text-left"
-          >
-            <Heart size={19} className="w-7 shrink-0 text-protein" fill="currentColor" strokeWidth={0} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[16px] font-semibold text-ink">{t("s.health")}</span>
-              <span className="block text-[12px] text-ink-faint">{t("s.healthSub")}</span>
-            </span>
-            <span
-              className={`shrink-0 text-[14px] font-semibold ${profile.healthSynced ? "text-mint" : "text-ink-faint"}`}
-            >
-              {profile.healthSynced ? t("s.connected") : t("s.connect")}
-            </span>
-          </button>
         </Section>
 
         <Section title={t("s.preferences")}>

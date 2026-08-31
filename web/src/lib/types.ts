@@ -36,7 +36,6 @@ export interface UserProfile {
   jesterMode: boolean;
   remindersEnabled: boolean;
   reminderTimes: number[];
-  healthSynced: boolean;
   isPro: boolean;
   hasOnboarded: boolean;
   /**
@@ -142,7 +141,6 @@ export const defaultProfile: UserProfile = {
   jesterMode: false,
   remindersEnabled: true,
   reminderTimes: [9, 13, 19],
-  healthSynced: false,
   isPro: false,
   hasOnboarded: false,
 };
