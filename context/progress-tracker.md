@@ -72,6 +72,44 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 18 — iOS Nutrition Tests** (`context/feature-specs/18-ios-nutrition-tests.md`) —
+**implemented, UNVERIFIED.** Needs `⌘U` on the Mac.
+
+Answers the fair criticism that unit 17 added no regression tests. The gap was wider than that
+unit: **web had 158 tests, iOS and Android none** — against three platforms that
+`context/architecture.md` describes as deliberate hand-written mirrors, with drift between them
+listed as a known risk.
+
+`ModernBodyFoodScannerTests/NutritionMathTests.swift` mirrors `web/src/test/nutrition.test.ts`:
+age and its floor, BMR for both sexes, activity multipliers, all three goal branches, the 1200 kcal
+floor, macro consistency, BMI boundaries, meal totals with portions, item scaling, and
+`settingCalories` including the empty-items collapse, drift correction and clamping. Plus
+`MealSlot.current`.
+
+**Expected values are the hand-computed numbers the web suite asserts, not values read back from
+the Swift.** A test written from the implementation only proves the code does what it does; these
+prove both platforms agree with the arithmetic.
+
+### Two genuine drifts found — neither fixed, both need a decision
+
+1. **Whitespace-only titles.** `settingCalories` falls back to a generic name: web trims
+   (`title.trim() === ""`), iOS does not (`title.isEmpty`). A title of `"   "` becomes `"Meal"` on
+   web and stays whitespace on iOS, producing a blank-looking row. The iOS test deliberately
+   asserts only the genuinely-empty case, so nothing pins the divergence as correct.
+2. **Tie-breaking on rounding drift.** Both push leftover kcal into the largest item, but web keeps
+   the *first* maximum and Swift's `indices.max(by:)` keeps the *last*. Cosmetic — totals agree —
+   but real. Both suites are written tie-agnostically so neither fails spuriously.
+
+**Checked and ruled out:** JavaScript's `Math.round` rounds half toward `+∞` while Swift's
+`.rounded()` rounds half away from zero. They differ only on negative halves, and every rounded
+quantity here is non-negative — so not drift, but an easy false alarm worth having verified.
+
+**No Swift was compiled.** Initializers were checked against the real declarations, and the syntax
+matches the existing placeholder in the same target. **A failing expectation is a result, not a
+mistake to smooth over** — it would mean the platforms have drifted, which is what this unit exists
+to detect.
+
+
 **Unit 17 — iOS Scan Defects** (`context/feature-specs/17-ios-scan-defects.md`) —
 **COMPLETE, verified on Simulator at `beabdeb`.**
 
