@@ -72,6 +72,43 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 17 — iOS Scan Defects** (`context/feature-specs/17-ios-scan-defects.md`) —
+**implemented but UNVERIFIED.** Needs a rebuild on the Mac.
+
+An iPhone 17 Pro / iOS 26.5 Simulator test gave a **green baseline** — build, all six onboarding
+screens, dashboard, calculated targets, relaunch persistence — with three failures against it, two
+of which affect physical devices as well.
+
+1. **Empty key reported the wrong error.** Confirmed exactly as predicted in unit 04 —
+   `isConfigured` checked only the URL, which defaults to the public gateway, so a keyless build
+   sent an empty bearer token and got a 401. Now requires a key and bails before the request.
+2. **"Preparing camera…" forever.** `placeholder` branched only on `.denied`, so `.unavailable` —
+   a *terminal* state — rendered as a transient one. Not Simulator-only: any device whose camera
+   cannot be configured hits the same dead end. It now has its own copy naming the two things that
+   still work.
+3. **"Try again" left a frozen preview.** Two causes: `stop()` never cleared `status`, so the view
+   rendered a preview layer over a stopped session; and retry never restarted the camera nor
+   cleared `capturedImage`/`pickerItem`, both watched with `onChange` — meaning **re-picking the
+   same photo would not have fired at all.**
+
+**Correction to the test's pass condition:** the report expected *"AI scanning isn't available in
+this build yet."* That is the **web** string. iOS has its own, better copy —
+*"Meal analysis is unavailable right now. You can still add a meal by searching the food
+database."* — which names a working alternative. That is what a pass looks like on iOS.
+
+**No Swift was compiled.** There is no Xcode here. Changes were traced to the reported code paths,
+and the switch-expression syntax matches what `NutritionAI.swift:20` already uses. **Rebuild and
+run the script in the spec before trusting any of it.**
+
+**Not done, deliberately:** the actor-isolation and camera-concurrency warnings. They were reported
+but not quoted, and guessing at concurrency annotations in a file that cannot be compiled here is
+how one warning becomes a build failure. **Paste them and they become their own unit.**
+
+**Still deferred:** moving iOS onto the Gemini proxy. The proxy is not deployed, so iOS would point
+at a URL that does not exist. iOS stays on the Rork gateway until there is a live endpoint — which
+also means **the leaked Rork key cannot be rotated yet.**
+
+
 **Unit 16 — Android Config Bootstrap and Cosmetic De-Rork**
 (`context/feature-specs/16-cosmetic-derork.md`) — complete.
 
