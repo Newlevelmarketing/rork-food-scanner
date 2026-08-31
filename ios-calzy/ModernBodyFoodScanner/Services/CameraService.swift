@@ -41,6 +41,10 @@ final class CameraService: NSObject {
     }
 
     func stop() {
+        // Drop out of .running as well as stopping the session. Without this the
+        // view still believes the camera is live and keeps rendering a preview
+        // layer over a stopped session, which shows the last frame frozen.
+        if status == .running { status = .idle }
         queue.async { [session] in
             if session.isRunning { session.stopRunning() }
         }
