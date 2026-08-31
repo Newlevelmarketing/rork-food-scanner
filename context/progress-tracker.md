@@ -73,7 +73,39 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 ## Recently Completed
 
 **Unit 17 — iOS Scan Defects** (`context/feature-specs/17-ios-scan-defects.md`) —
-**implemented but UNVERIFIED.** Needs a rebuild on the Mac.
+**COMPLETE, verified on Simulator at `beabdeb`.**
+
+All five re-test steps passed on iPhone 17 Pro / iOS 26.5: fresh Debug build, "Camera unavailable"
+with recovery guidance, the correct iOS empty-key message, a clean retry state, and re-selecting
+the same photo triggering analysis. Existing onboarding state still loads. The Swift compiled first
+time, which is worth noting given none of it could be compiled where it was written.
+
+**Carried forward, not closed:**
+
+1. **Live-camera restart is still unproven.** The Simulator has no camera, so the
+   `.running` → `stop()` → `start()` path never ran — only the *unavailable* branch of defect 3 is
+   verified. Needs a physical device.
+2. **Real AI estimation is still unproven.** Needs a valid Rork key; only `.notConfigured` is
+   verified.
+3. **Swift concurrency warnings remain**, still not quoted. To capture them:
+   `xcodebuild -project ios-calzy/ModernBodyFoodScanner.xcodeproj -scheme ModernBodyFoodScanner
+   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | grep -n 'warning:'`
+4. **No automated regression tests.** A fair criticism, and bigger than this unit — see below.
+
+### Test coverage is lopsided across the three platforms
+
+**Web has 158 tests. iOS and Android have none.** The platforms are hand-mirrored and
+`context/architecture.md` already records drift between them as a known risk; untested mirrors are
+how that risk turns into a defect.
+
+The highest-value Swift target is not unit 17's code but the **nutrition math** — `lib/nutrition.ts`
+has 46 tests covering Mifflin–St Jeor, the calorie floor, macro splits and rounding drift, and its
+Swift mirror has zero. Same equations, no proof they agree. That is its own unit and it needs a Mac
+to run.
+
+---
+
+**Original entry, for the reasoning trail:**
 
 An iPhone 17 Pro / iOS 26.5 Simulator test gave a **green baseline** — build, all six onboarding
 screens, dashboard, calculated targets, relaunch persistence — with three failures against it, two

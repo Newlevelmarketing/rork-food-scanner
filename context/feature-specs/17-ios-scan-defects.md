@@ -2,10 +2,48 @@
 
 ## Status
 
-- Status: **Implemented, UNVERIFIED** — needs a rebuild on the Mac
+- Status: **Complete — verified on Simulator**
 - Owner: Claude Code (code) / Human (verification)
 - Created: 2026-08-22
 - Last Updated: 2026-08-22
+
+## Verification Result
+
+Rebuilt at `beabdeb` on iPhone 17 Pro / iOS 26.5 Simulator. **All five re-test steps passed:**
+
+| Step | Result |
+| --- | --- |
+| Fresh Debug build | **Pass** |
+| Simulator shows "Camera unavailable" with recovery guidance | **Pass** |
+| Empty key shows the correct iOS message | **Pass** |
+| "Try again" returns to a clean camera-unavailable state | **Pass** |
+| Selecting the same photo again triggers analysis | **Pass** |
+| Existing onboarding/profile state still loads | **Pass** |
+
+The Swift compiled first time, which is worth noting given none of it could be compiled where it
+was written.
+
+### Still unverified — carried forward, not closed
+
+1. **Live-camera restart.** The Simulator has no camera, so the `.running` → `stop()` → `start()`
+   path was never exercised. Only defect 3's *unavailable* branch is proven. **Needs a physical
+   device.**
+2. **Real AI estimation.** Needs a valid Rork key. Only the `.notConfigured` branch is proven.
+3. **Swift concurrency warnings.** Untouched — still not quoted anywhere.
+4. **No automated regression tests.** Fair. All three fixes are pinned by a human re-running five
+   manual steps. See the note below.
+
+### Note on the missing tests
+
+This is a real gap, and it is not specific to this unit: **the web app has 158 tests; iOS and
+Android have none.** The three platforms are hand-mirrored, and `context/architecture.md` already
+records drift between them as a known risk — untested mirrors are how that risk becomes a defect.
+
+The most valuable Swift target is not this unit's code but the **nutrition math**, which mirrors
+`lib/nutrition.ts` and is covered by 46 tests on web and zero on iOS. Same equations, same rounding
+rules, no proof they agree.
+
+That is its own unit, and it needs a Mac to run.
 
 ## Goal
 
