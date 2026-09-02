@@ -2,7 +2,7 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "Calzy",
+      "name": "ModernBody",
       "path": "ios-calzy",
       "framework": "swift",
       "settings": {
