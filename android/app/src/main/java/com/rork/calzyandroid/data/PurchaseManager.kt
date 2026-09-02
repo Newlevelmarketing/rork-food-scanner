@@ -59,10 +59,7 @@ data class StoreState(
     val isRestoring: Boolean = false,
     val message: String? = null,
     val loadFailed: Boolean = false,
-) {
-    /** True when the paywall is showing hardcoded design pricing, never purchasable. */
-    val isPreviewPricing: Boolean get() = !isConfigured && plans.isNotEmpty()
-}
+)
 
 /**
  * RevenueCat wrapper for ModernBody Pro.
@@ -70,38 +67,26 @@ data class StoreState(
  * The SDK is only configured when [PurchaseConfig] carries a real key. Without
  * one the manager still exposes state so the UI can explain itself, but it never
  * touches the billing stack and never claims a subscription is active.
+ *
+ * Every price shown comes from a live store product. There is deliberately no
+ * hardcoded fallback pricing: if the offering cannot be loaded the paywall says
+ * so rather than displaying a figure that is not what would be charged.
  */
 object PurchaseManager {
 
     private val _state = MutableStateFlow(StoreState(isConfigured = PurchaseConfig.isConfigured))
     val state: StateFlow<StoreState> = _state.asStateFlow()
 
-    /**
-     * Design-only pricing for the in-development paywall.
-     *
-     * Debug builds only, and every row is unpurchasable because [rcPackage] is
-     * null. This exists so the layout can be reviewed before store products are
-     * live — it must never be reachable from a release build.
-     */
-    private fun previewPlans(): List<SubscriptionPlan> = listOf(
-        SubscriptionPlan("preview_weekly", PlanTerm.WEEKLY, "€9.99", null, null, null),
-        SubscriptionPlan("preview_monthly", PlanTerm.MONTHLY, "€17.99", null, null, null),
-        SubscriptionPlan("preview_yearly", PlanTerm.YEARLY, "€89.00", "€7.42 / month", "Best value", null),
-    )
-
     fun configure(context: Context) {
         if (!PurchaseConfig.isConfigured) {
-            _state.value = _state.value.copy(
-                isConfigured = false,
-                plans = if (BuildConfig.DEBUG) previewPlans() else emptyList(),
-            )
+            _state.value = _state.value.copy(isConfigured = false, plans = emptyList())
             return
         }
         if (Purchases.isConfigured) return
 
         Purchases.logLevel = if (BuildConfig.DEBUG) LogLevel.DEBUG else LogLevel.ERROR
         Purchases.configure(
-            PurchasesConfiguration.Builder(context, PurchaseConfig.GOOGLE_API_KEY).build(),
+            PurchasesConfiguration.Builder(context, PurchaseConfig.apiKey).build(),
         )
         Purchases.sharedInstance.updatedCustomerInfoListener = UpdatedCustomerInfoListener { info ->
             _state.value = _state.value.copy(isSubscribed = info.isPro())
@@ -131,12 +116,7 @@ object PurchaseManager {
 
     /** Loads the current offering and maps it onto the three paywall rows. */
     fun refreshOfferings() {
-        if (!Purchases.isConfigured) {
-            if (BuildConfig.DEBUG && _state.value.plans.isEmpty()) {
-                _state.value = _state.value.copy(plans = previewPlans())
-            }
-            return
-        }
+        if (!Purchases.isConfigured) return
         _state.value = _state.value.copy(isLoading = true, loadFailed = false, message = null)
         Purchases.sharedInstance.getOfferings(
             object : ReceiveOfferingsCallback {

@@ -45,6 +45,10 @@ struct SubscriptionPlan: Identifiable {
 /// The SDK is only configured when ``PurchaseConfig`` carries a real key. Without
 /// one the manager still publishes state so the UI can explain itself, but it
 /// never touches StoreKit and never claims a subscription is active.
+///
+/// Every price shown comes from a live `StoreProduct`. There is deliberately no
+/// hardcoded fallback pricing: if the offering cannot be loaded the paywall says
+/// so rather than displaying a figure that is not what would be charged.
 @Observable
 @MainActor
 final class PurchaseManager {
@@ -59,25 +63,7 @@ final class PurchaseManager {
 
     var isConfigured: Bool { PurchaseConfig.isConfigured }
 
-    /// True when the paywall is showing hardcoded design pricing, never purchasable.
-    var isPreviewPricing: Bool { !isConfigured && !plans.isEmpty }
-
-    private init() {
-        #if DEBUG
-        if !PurchaseConfig.isConfigured { plans = Self.previewPlans }
-        #endif
-    }
-
-    /// Design-only pricing for the in-development paywall.
-    ///
-    /// Debug builds only, and every row is unpurchasable because `package` is nil.
-    /// This exists so the layout can be reviewed before store products are live —
-    /// it must never be reachable from a release build.
-    private static let previewPlans: [SubscriptionPlan] = [
-        SubscriptionPlan(id: "preview_weekly", term: .weekly, price: "€9.99", perUnit: nil, badge: nil, package: nil),
-        SubscriptionPlan(id: "preview_monthly", term: .monthly, price: "€17.99", perUnit: nil, badge: nil, package: nil),
-        SubscriptionPlan(id: "preview_yearly", term: .yearly, price: "€89.00", perUnit: "€7.42 / month", badge: "Best value", package: nil)
-    ]
+    private init() {}
 
     /// Configures the SDK once, from the App's `init()`.
     static func configureSDK() {

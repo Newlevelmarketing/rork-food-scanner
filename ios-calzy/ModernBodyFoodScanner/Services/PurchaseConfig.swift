@@ -7,7 +7,12 @@ import Foundation
 /// not a secret leak — it is the documented RevenueCat integration. The secret
 /// key, which must never appear in an app, is a different credential.
 ///
-/// Until a key is filled in, `isConfigured` stays false: the SDK is never
+/// Keys come from `Config`, which is generated at build time from the project's
+/// public environment variables. The literals in `Config.swift` read as empty in
+/// source control and are injected during the iOS build, so an agent-time read of
+/// this file will always show "" even when the keys are set.
+///
+/// Until a key is injected, `isConfigured` stays false: the SDK is never
 /// configured, the Pro entry point is hidden, and no purchase UI is reachable in
 /// a release build.
 ///
@@ -16,10 +21,10 @@ import Foundation
 nonisolated enum PurchaseConfig {
 
     /// Public SDK key for the RevenueCat **Test Store** app, used in debug builds.
-    static let testAPIKey: String = ""
+    static let testAPIKey: String = Config.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY
 
     /// Public SDK key for the RevenueCat **App Store** app, used in release builds.
-    static let appStoreAPIKey: String = ""
+    static let appStoreAPIKey: String = Config.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
 
     /// Entitlement that unlocks ModernBody Pro.
     ///

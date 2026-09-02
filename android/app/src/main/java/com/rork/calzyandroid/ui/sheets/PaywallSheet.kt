@@ -198,13 +198,6 @@ fun PaywallSheet(
                 }
             }
 
-            if (state.isPreviewPricing) {
-                Notice(
-                    text = "Design preview — these are placeholder prices. Purchasing " +
-                        "unlocks once the store products are live.",
-                )
-            }
-
             when {
                 state.isLoading -> Box(
                     modifier = Modifier
@@ -237,7 +230,7 @@ fun PaywallSheet(
                 }
             }
 
-            state.message?.takeIf { !state.isPreviewPricing }?.let { message ->
+            state.message?.let { message ->
                 Text(
                     text = message,
                     fontSize = 13.sp,

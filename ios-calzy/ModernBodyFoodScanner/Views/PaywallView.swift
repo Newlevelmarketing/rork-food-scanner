@@ -18,12 +18,6 @@ struct PaywallView: View {
                     hero
                     features
 
-                    if store.isPreviewPricing {
-                        notice(
-                            "Design preview — these are placeholder prices. Purchasing unlocks once the store products are live."
-                        )
-                    }
-
                     if store.isLoading {
                         ProgressView()
                             .tint(Theme.ink)
@@ -42,7 +36,7 @@ struct PaywallView: View {
                         }
                     }
 
-                    if let message = store.message, !store.isPreviewPricing {
+                    if let message = store.message {
                         Text(message)
                             .font(.system(size: 13))
                             .foregroundStyle(Theme.inkSoft)
