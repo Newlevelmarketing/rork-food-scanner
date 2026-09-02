@@ -20,11 +20,22 @@ object PurchaseConfig {
     /** RevenueCat public SDK key for the Play Store app (`goog_...`). */
     const val GOOGLE_API_KEY: String = ""
 
-    /** Entitlement that unlocks ModernBody Pro. */
-    const val ENTITLEMENT_ID: String = "pro"
+    /**
+     * Entitlement that unlocks ModernBody Pro.
+     *
+     * Must match the dashboard entitlement identifier exactly. A mismatch does
+     * not fail loudly: the purchase succeeds, then reads back as "not
+     * subscribed", so this string is load-bearing.
+     */
+    const val ENTITLEMENT_ID: String = "premium"
 
-    /** Offering queried for the paywall; blank uses the dashboard's current offering. */
-    const val OFFERING_ID: String = ""
+    /**
+     * Offering queried for the paywall; blank uses the dashboard's current offering.
+     *
+     * Named explicitly so the paywall still resolves if `default` is ever not the
+     * dashboard's "current" offering.
+     */
+    const val OFFERING_ID: String = "default"
 
     val isConfigured: Boolean
         get() = GOOGLE_API_KEY.isNotBlank()

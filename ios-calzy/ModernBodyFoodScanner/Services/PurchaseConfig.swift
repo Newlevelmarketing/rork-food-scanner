@@ -22,10 +22,17 @@ nonisolated enum PurchaseConfig {
     static let appStoreAPIKey: String = ""
 
     /// Entitlement that unlocks ModernBody Pro.
-    static let entitlementID: String = "pro"
+    ///
+    /// Must match the dashboard entitlement identifier exactly. A mismatch does
+    /// not fail loudly: the purchase succeeds, then reads back as "not
+    /// subscribed", so this string is load-bearing.
+    static let entitlementID: String = "premium"
 
     /// Offering queried for the paywall; empty uses the dashboard's current offering.
-    static let offeringID: String = ""
+    ///
+    /// Named explicitly so the paywall still resolves if `default` is ever not
+    /// the dashboard's "current" offering.
+    static let offeringID: String = "default"
 
     /// The key this build should configure with.
     static var apiKey: String {
