@@ -11,6 +11,8 @@ package com.rork.calzyandroid.data
  * the platform differs (Google Play instead of the App Store, Android Settings
  * instead of iOS Settings).
  */
+import com.rork.calzyandroid.BuildConfig
+
 object Legal {
 
     /** Public web mirror of the privacy policy. Empty hides the "view online" row. */
@@ -23,7 +25,9 @@ object Legal {
     const val SUPPORT_EMAIL: String = ""
 
     const val APP_NAME: String = "ModernBody"
-    const val VERSION: String = "1.0.1"
+
+    /** Always the version of the binary the reader is holding. */
+    val VERSION: String = BuildConfig.VERSION_NAME
 
     /** Shown wherever an AI estimate is presented as a number. */
     const val ESTIMATE_DISCLAIMER: String =
@@ -53,7 +57,7 @@ object Legal {
         • Meals, food items, portions and meal times
         • Exercise entries, water intake and weight history
         • Meal photos and progress photos
-        • Saved meals, reminder preferences and your chosen language
+        • Saved meals and your chosen language
 
         Because this data is stored locally, it is included in your device backups if you use Android Backup or a computer backup. Those backups are governed by Google's privacy policy, not ours.
 
@@ -65,13 +69,9 @@ object Legal {
 
         Photos submitted for analysis are processed to generate the estimate and are not used by us to build a user profile or to train models. The photo that appears in your meal history is a separate copy stored on your device.
 
-        3. SUBSCRIPTIONS AND PURCHASES
+        3. PURCHASES
 
-        ModernBody Pro is optional. If you buy it, the transaction is handled by Google Play and by our subscription provider, RevenueCat, which validates the purchase and tells the app whether your subscription is active.
-
-        RevenueCat receives a randomly generated, anonymous app user identifier together with the Google Play purchase receipt. It does not receive your name, email address, meals, photos, weight or any other content from the app. We never see or store your payment card details; those remain with Google.
-
-        If you never subscribe, no purchase data is created and nothing is sent to RevenueCat.
+        This version of ModernBody is free. It contains no subscriptions, no in-app purchases and no billing code of any kind, so no purchase or payment information is created, collected or shared.
 
         4. INFORMATION WE DO NOT COLLECT
 
@@ -81,15 +81,12 @@ object Legal {
 
         • Camera — used only while the meal scanner is open, so you can photograph a meal. Declining leaves every other feature usable; you can still pick a photo from your library or type a description.
         • Photos and media — used only when you choose a photo for a meal or a progress photo. ModernBody reads only the item you select.
-        • Notifications — used only if you switch on tracking reminders, to post local reminders at the times you choose. No notification content leaves your device.
 
-        Each permission is requested at the moment the feature is first used, never at launch.
+        ModernBody requests no other permissions. It does not send notifications, and it does not read or write any health, fitness or activity data held by your device. Each permission is requested at the moment the feature is first used, never at launch.
 
         6. YOUR CONTROL AND DELETION
 
         You can delete individual meals, exercises, weights and photos at any time. Settings › Erase all data permanently removes every entry, photo and profile detail from the device and returns the app to its first-run state. Uninstalling the app also destroys all of its stored data. Because we hold no server-side copy and no account, there is nothing for us to delete on your behalf.
-
-        Deleting your data does not cancel a subscription. Manage subscriptions in the Google Play Store under Payments & subscriptions.
 
         7. CHILDREN
 
@@ -127,17 +124,9 @@ object Legal {
 
         ModernBody has no social features. There are no public profiles, feeds, comments, messaging, sharing between users or any other mechanism by which content you create becomes visible to another person inside the app. Meal names and descriptions you type are stored on your device only.
 
-        7. SUBSCRIPTIONS AND BILLING
+        7. PRICE
 
-        Meal logging, the food database and manual entry are free to use. ModernBody Pro is an optional auto-renewing subscription offered in weekly, monthly and yearly terms.
-
-        The exact price, billing period and currency of each term are shown in your local currency on the subscription screen inside the app before you confirm any purchase. Prices may differ by region and may change over time; any change is shown to you before it applies.
-
-        Payment is charged to your Google Play account when you confirm the purchase. A subscription renews automatically for the same term unless you turn off auto-renew at least 24 hours before the end of the current period. Your account is charged for the renewal within 24 hours before the end of the current period.
-
-        You can view, manage and cancel your subscription, including turning off auto-renew, in the Google Play Store app under Payments & subscriptions. Uninstalling ModernBody does not cancel a subscription.
-
-        Where a free trial or introductory offer is provided, any unused portion is forfeited when you purchase a subscription. Refunds are handled by Google Play under its refund policy.
+        This version of ModernBody is free to use in full. Every feature — meal scanning, the food database, manual entry, exercise and water logging, weight and photo tracking — is available without payment. There is no subscription, no in-app purchase and no locked or trial-limited functionality.
 
         8. DISCLAIMER OF WARRANTIES
 

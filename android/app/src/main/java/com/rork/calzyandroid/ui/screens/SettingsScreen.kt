@@ -21,15 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material.icons.outlined.MonitorWeight
 import androidx.compose.material.icons.outlined.NordicWalking
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -41,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -54,7 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rork.calzyandroid.AppViewModel
 import com.rork.calzyandroid.BuildConfig
 import com.rork.calzyandroid.data.Legal
-import com.rork.calzyandroid.data.PurchaseManager
 import com.rork.calzyandroid.ui.components.CalzyCard
 import com.rork.calzyandroid.ui.components.CalzyToggle
 import com.rork.calzyandroid.ui.components.Hairline
@@ -67,13 +62,11 @@ import com.rork.calzyandroid.ui.sheets.ActivitySheet
 import com.rork.calzyandroid.ui.sheets.GoalsWeightSheet
 import com.rork.calzyandroid.ui.sheets.LanguageSheet
 import com.rork.calzyandroid.ui.sheets.NutritionGoalsSheet
-import com.rork.calzyandroid.ui.sheets.PaywallSheet
 import com.rork.calzyandroid.ui.sheets.PrivacyPolicySheet
-import com.rork.calzyandroid.ui.sheets.RemindersSheet
 import com.rork.calzyandroid.ui.sheets.TermsOfUseSheet
 import com.rork.calzyandroid.ui.theme.CalzyColors
 
-private enum class SettingsRoute { account, nutrition, goals, reminders, activity, language }
+private enum class SettingsRoute { account, nutrition, goals, activity, language }
 
 /** Settings tab: grouped cards with section captions. */
 @Composable
@@ -83,10 +76,8 @@ fun SettingsScreen(viewModel: AppViewModel) {
     val context = LocalContext.current
     val data by viewModel.data.collectAsStateWithLifecycle()
     val profile = data.profile
-    val store by PurchaseManager.state.collectAsStateWithLifecycle()
 
     var route by remember { mutableStateOf<SettingsRoute?>(null) }
-    var showPaywall by remember { mutableStateOf(false) }
     var showTerms by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
     var confirmErase by remember { mutableStateOf(false) }
@@ -141,32 +132,15 @@ fun SettingsScreen(viewModel: AppViewModel) {
                     ) {
                         MetricText(text = initials, size = 17, color = Color.White)
                     }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        ) {
-                            Text(
-                                text = displayName,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = CalzyColors.ink,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Icon(
-                                imageVector = Icons.Filled.Verified,
-                                contentDescription = null,
-                                tint = CalzyColors.mint,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                        Text(
-                            text = if (store.isSubscribed) t("s.pro") else t("s.free"),
-                            fontSize = 13.sp,
-                            color = CalzyColors.inkFaint,
-                        )
-                    }
+                    Text(
+                        text = displayName,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CalzyColors.ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
                     Chevron()
                 }
             }
@@ -179,10 +153,6 @@ fun SettingsScreen(viewModel: AppViewModel) {
             RowDivider()
             NavRow(icon = Icons.Outlined.MonitorWeight, title = t("s.weight")) {
                 route = SettingsRoute.goals
-            }
-            RowDivider()
-            NavRow(icon = Icons.Outlined.Notifications, title = t("s.reminders")) {
-                route = SettingsRoute.reminders
             }
             RowDivider()
             NavRow(icon = Icons.Outlined.NordicWalking, title = t("s.activity")) {
@@ -245,87 +215,6 @@ fun SettingsScreen(viewModel: AppViewModel) {
                     checked = profile.jesterMode,
                     onChange = { value -> viewModel.setProfile { it.copy(jesterMode = value) } },
                 )
-            }
-        }
-
-        // Hidden entirely in a release build with no RevenueCat key, so an
-        // unconfigured binary can never present an unpurchasable paywall.
-        if (store.isConfigured || BuildConfig.DEBUG) {
-            Section(title = t("s.subscription")) {
-                Pressable(onClick = { showPaywall = true }) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(13.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(CalzyColors.plum, CalzyColors.protein),
-                                ),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AutoAwesome,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(17.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
-                        ) {
-                            Text(
-                                text = "ModernBody Pro",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CalzyColors.ink,
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (store.isSubscribed) {
-                                            CalzyColors.mint
-                                        } else {
-                                            CalzyColors.ink
-                                        },
-                                    )
-                                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    text = if (store.isSubscribed) {
-                                        t("s.active")
-                                    } else {
-                                        t("s.upgrade")
-                                    },
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
-                            }
-                        }
-                            Text(
-                                text = if (store.isSubscribed) {
-                                    "Unlimited scans and insights"
-                                } else {
-                                    "Unlimited scans, deeper insights"
-                                },
-                                fontSize = 12.sp,
-                                color = CalzyColors.inkFaint,
-                            )
-                        }
-                        Chevron()
-                    }
-                }
             }
         }
 
@@ -426,7 +315,7 @@ fun SettingsScreen(viewModel: AppViewModel) {
         }
 
         Text(
-            text = "${t("s.version")} 1.0.0",
+            text = "${t("s.version")} ${BuildConfig.VERSION_NAME}",
             fontSize = 12.sp,
             color = CalzyColors.inkFaint,
             textAlign = TextAlign.Center,
@@ -451,11 +340,6 @@ fun SettingsScreen(viewModel: AppViewModel) {
         viewModel = viewModel,
         onClose = { route = null },
     )
-    RemindersSheet(
-        open = route == SettingsRoute.reminders,
-        viewModel = viewModel,
-        onClose = { route = null },
-    )
     ActivitySheet(
         open = route == SettingsRoute.activity,
         viewModel = viewModel,
@@ -466,14 +350,6 @@ fun SettingsScreen(viewModel: AppViewModel) {
         viewModel = viewModel,
         onClose = { route = null },
     )
-    PaywallSheet(
-        open = showPaywall,
-        onClose = { showPaywall = false },
-        onOpenTerms = { showTerms = true },
-        onOpenPrivacy = { showPrivacy = true },
-    )
-    // Declared after the paywall so the documents layer above it when opened
-    // from the subscription screen's compliance links.
     TermsOfUseSheet(
         open = showTerms,
         onClose = { showTerms = false },
