@@ -18,7 +18,7 @@ import Foundation
 ///
 /// `entitlementID` and `offeringID` must match the identifiers configured in the
 /// RevenueCat dashboard.
-nonisolated enum PurchaseConfig {
+enum PurchaseConfig {
 
     /// Public SDK key for the RevenueCat **Test Store** app, used in debug builds.
     static let testAPIKey: String = Config.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY
