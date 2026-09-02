@@ -16,7 +16,6 @@ import type { JSX } from "react";
 import { useState, type ReactNode } from "react";
 
 import { Card, Toggle } from "@/components/calzy/Primitives";
-import { Paywall } from "@/features/Paywall";
 import { LanguageSheet } from "@/features/settings/LanguageSheet";
 import {
   AccountSheet,
@@ -46,7 +45,6 @@ export function Settings(): JSX.Element {
   const { language, t } = useLanguage();
 
   const [route, setRoute] = useState<SettingsRoute>(null);
-  const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [confirmErase, setConfirmErase] = useState<boolean>(false);
 
   const displayName = profile.name.trim() === "" ? "Your profile" : profile.name;
@@ -132,15 +130,11 @@ export function Settings(): JSX.Element {
           </div>
         </Section>
 
+        {/* Subscriptions are sold in the iOS and Android apps only. The web build
+            intentionally has no purchase flow: billing runs through RevenueCat on
+            the native stores, so this row reports status and never sells. */}
         <Section title={t("s.subscription")}>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.tap();
-              setShowPaywall(true);
-            }}
-            className="pressable flex w-full items-center gap-[13px] p-[14px] text-left"
-          >
+          <div className="flex w-full items-center gap-[13px] p-[14px] text-left">
             <span
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
               style={{
@@ -152,18 +146,19 @@ export function Settings(): JSX.Element {
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-[7px]">
                 <span className="text-[16px] font-bold text-ink">ModernBody Pro</span>
-                <span
-                  className={`rounded-full px-[7px] py-[3px] text-[10px] font-bold text-white ${profile.isPro ? "bg-mint" : "bg-ink"}`}
-                >
-                  {profile.isPro ? t("s.active") : t("s.upgrade")}
-                </span>
+                {profile.isPro && (
+                  <span className="rounded-full bg-mint px-[7px] py-[3px] text-[10px] font-bold text-white">
+                    {t("s.active")}
+                  </span>
+                )}
               </span>
               <span className="block text-[12px] text-ink-faint">
-                {profile.isPro ? "Unlimited scans and insights" : "Unlimited scans, deeper insights"}
+                {profile.isPro
+                  ? "Unlimited scans and insights"
+                  : "Available in the ModernBody iOS and Android apps"}
               </span>
             </span>
-            <ChevronRight size={16} className="shrink-0 text-ink-faint" strokeWidth={2.6} />
-          </button>
+          </div>
         </Section>
 
         <Section title={t("s.support")}>
@@ -231,7 +226,6 @@ export function Settings(): JSX.Element {
       <RemindersSheet open={route === "reminders"} onClose={() => setRoute(null)} />
       <ActivitySheet open={route === "activity"} onClose={() => setRoute(null)} />
       <LanguageSheet open={route === "language"} onClose={() => setRoute(null)} />
-      <Paywall open={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }
