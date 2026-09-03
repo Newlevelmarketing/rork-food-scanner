@@ -72,6 +72,69 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Full codebase audit — 2026-09-03** (`context/audit-2026-09-03.md`)
+
+Eight independent lenses over web, iOS, Android, the proxy and the legal copy. Every raw finding
+was put to an adversarial reviewer told to **refute** it and default to killing when uncertain.
+**62 survived: 4 high, 34 medium, 24 low.**
+
+`drift` was the richest lens at **14 findings** — the three apps are hand-mirrored with nothing
+enforcing agreement, and the two drifts already known were the tip of it.
+
+### Four findings are follow-ups to work done in this project, not pre-existing debt
+
+1. **`CameraService.swift:37`** (high) — unit 17 fixed `stop()` leaving `status` stale. `start()`
+   has the inverse race: `status = .running` is assigned *synchronously* while `startRunning()` is
+   only *queued*. The shutter renders enabled over a black preview, and a tap in that window
+   reaches `capturePhoto` with no active connection — an uncatchable exception. Device-only, never
+   exercised on Simulator. **The fix was half a fix.**
+2. **`ScanSheet.tsx:154`** (medium) — the *web* build still has the exact bug unit 17 fixed on iOS:
+   `unavailable` falls through to "Preparing camera…" and tells the user to allow access, which can
+   never work. Retry is broken too — `navigator.mediaDevices?.getUserMedia(...)` short-circuits to
+   `undefined`, so neither `.then` nor `.catch` runs and the sheet pins on "Preparing camera…".
+   **iOS was fixed and web was never checked.**
+3. **`web/api/analyze.ts:48`** (medium) — the unit 11 proxy is an **unauthenticated, unmetered
+   relay**. It removed key extraction and introduced an open endpoint: anyone who learns the URL
+   can spend the Gemini quota until real users get `rateLimited`. The unit 11 spec's Out of Scope
+   list never mentions abuse control, in or out — a genuine gap in that spec, not a deferred item.
+4. **`SettingsScreen.kt:357`** (high) — Android still links Privacy and Terms to `rork.app` and
+   hardcodes `support@calzy.app`. Unit 02 fixed exactly this on web and unit 16 never carried it to
+   Android.
+
+### The most consequential finding overall
+
+**`AppStore.swift:299` (high)** — iOS `eraseAll()` resets the JSON but never touches
+`Documents/images/`, so **every meal photo and body progress photo survives "Delete everything"**
+as an unreachable orphan, and continues into iCloud Backup. Three shipped strings promise
+otherwise: the confirmation dialog, privacy policy section 5, and the FAQ. Web and Android keep
+photos inline in the persisted blob and genuinely erase — **iOS is the only platform where the
+promise is false.**
+
+This is legally binding copy submitted to app stores, which makes it more than a bug.
+
+### Other findings worth naming here
+
+- **`build.gradle.kts:23`** — Android release builds are signed with the **public debug keystore**.
+  Play will reject the artifact, and a same-identity APK could update an installed app in place.
+- **`Primitives.tsx:281`** (high) — `Toggle` and `Slider` have no accessible name, so the
+  **mandatory onboarding is a column of anonymous sliders** to a screen reader. WCAG 4.1.2.
+- **`AndroidManifest.xml:12`** — Auto Backup on with no extraction rules copies the whole meal log
+  and photos to Google Drive, which the privacy policy does not describe.
+- **`AppStore.tsx:139`** — a second browser tab blind-writes its stale snapshot over the whole
+  storage key, erasing what the first tab logged.
+- **`AppStore.tsx:135`** — `selectedDate` is fixed at mount, so an app left open across midnight
+  files new meals under the previous day.
+- **`legal.ts:178`** — Terms say there are no in-app purchases while web and Android ship a priced
+  paywall. Independent confirmation of the contradiction already logged in `decision-log.md`.
+
+### Verification caveat
+
+The `synthesise` agent died to a usage limit; this summary and the report were written by hand from
+the verified findings rather than by an agent. Every finding here carries its reviewer's note,
+including the severity downgrades — worth reading before acting, since several were reduced from
+critical for good reasons.
+
+
 **Unit 18 — iOS Nutrition Tests** (`context/feature-specs/18-ios-nutrition-tests.md`) —
 **implemented, UNVERIFIED.** Needs `⌘U` on the Mac.
 
