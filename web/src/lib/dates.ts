@@ -20,6 +20,24 @@ export function isToday(date: Date | string): boolean {
   return isSameDay(date, new Date());
 }
 
+/**
+ * A timestamp on `day`, carrying the current clock time.
+ *
+ * Logging onto a past day should record *that* day with the time of writing, not
+ * midnight - otherwise entries bunch at 00:00 and lose their order. Seconds and
+ * milliseconds carry over so two entries written into the same minute still sort
+ * correctly.
+ *
+ * This rule previously existed twice, in MealResult and SearchSheet, and the two
+ * copies had already drifted: one preserved seconds, the other zeroed them.
+ */
+export function stampOnDay(day: Date, now: Date = new Date()): Date {
+  if (isSameDay(day, now)) return now;
+  const target = new Date(day);
+  target.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return target;
+}
+
 export function addDays(date: Date, days: number): Date {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);

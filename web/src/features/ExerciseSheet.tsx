@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, PrimaryButton, Slider } from "@/components/calzy/Primitives";
 import { ExerciseIcon } from "@/components/calzy/icons";
 import { FullScreenSheet } from "@/components/calzy/Sheet";
+import { stampOnDay } from "@/lib/dates";
 import { exercisePresets, presetCalories, type ExercisePreset } from "@/lib/foods";
 import { haptics } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,11 @@ export function ExerciseSheet({
           onClick={() => {
             store.addExercise({
               name: selected.name,
-              date: new Date().toISOString(),
+              // Every other write path honours the day the user is viewing. This one
+              // stamped `new Date()`, so a workout logged while looking at a past day
+              // landed on today: invisible in the list on screen, and silently
+              // inflating today's budget instead.
+              date: stampOnDay(store.selectedDate).toISOString(),
               minutes,
               calories: burned,
               icon: selected.icon,

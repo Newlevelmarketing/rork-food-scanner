@@ -4,6 +4,7 @@ import {
   daysInMonth,
   isSameDay,
   startOfDay,
+  stampOnDay,
   startOfMonth,
   weekdayInitials,
 } from "@/lib/dates";
@@ -115,5 +116,56 @@ describe("weekdayInitials", () => {
   it("provides seven entries, one per weekday", () => {
     expect(weekdayInitials).toHaveLength(7);
     expect(weekdayInitials.every((initial) => initial.length > 0)).toBe(true);
+  });
+});
+
+
+describe("stampOnDay", () => {
+  it("returns the clock time unchanged when the day is today", () => {
+    const now = new Date(2026, 5, 15, 14, 37, 22, 500);
+    expect(stampOnDay(now, now)).toBe(now);
+  });
+
+  it("moves the date to the target day but keeps the clock time", () => {
+    const now = new Date(2026, 5, 15, 14, 37, 22, 500);
+    const past = new Date(2026, 5, 10, 0, 0, 0, 0);
+    const result = stampOnDay(past, now);
+    expect(result.getFullYear()).toBe(2026);
+    expect(result.getMonth()).toBe(5);
+    expect(result.getDate()).toBe(10);
+    expect(result.getHours()).toBe(14);
+    expect(result.getMinutes()).toBe(37);
+  });
+
+  it("carries seconds and milliseconds, so same-minute entries still order", () => {
+    // SearchSheet's old copy zeroed these, so two foods logged into a past day
+    // within one minute got identical timestamps and an arbitrary order.
+    const now = new Date(2026, 5, 15, 14, 37, 22, 500);
+    const past = new Date(2026, 5, 10);
+    const result = stampOnDay(past, now);
+    expect(result.getSeconds()).toBe(22);
+    expect(result.getMilliseconds()).toBe(500);
+  });
+
+  it("orders two entries written into the same past minute", () => {
+    const past = new Date(2026, 5, 10);
+    const first = stampOnDay(past, new Date(2026, 5, 15, 14, 37, 10, 0));
+    const second = stampOnDay(past, new Date(2026, 5, 15, 14, 37, 40, 0));
+    expect(second.getTime()).toBeGreaterThan(first.getTime());
+  });
+
+  it("does not mutate the day it is given", () => {
+    const past = new Date(2026, 5, 10, 0, 0, 0, 0);
+    stampOnDay(past, new Date(2026, 5, 15, 14, 37));
+    expect(past.getHours()).toBe(0);
+    expect(past.getDate()).toBe(10);
+  });
+
+  it("handles a future day the same way", () => {
+    const now = new Date(2026, 5, 15, 9, 5);
+    const future = new Date(2026, 5, 20);
+    const result = stampOnDay(future, now);
+    expect(result.getDate()).toBe(20);
+    expect(result.getHours()).toBe(9);
   });
 });

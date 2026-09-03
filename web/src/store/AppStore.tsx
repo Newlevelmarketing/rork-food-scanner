@@ -134,13 +134,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }): JSX.Ele
   const [data, setData] = useState<AppData>(load);
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const saveTimer = useRef<number | null>(null);
+  /** The last blob this tab wrote, so its own echo can be told from another tab's write. */
+  const lastPersisted = useRef<string | null>(null);
+  /** The calendar day this tab currently believes is "today". */
+  const todayRef = useRef<Date>(startOfDay(new Date()));
 
   // Debounced persistence so slider drags don't thrash localStorage.
   useEffect(() => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        const serialised = JSON.stringify(data);
+        lastPersisted.current = serialised;
+        window.localStorage.setItem(STORAGE_KEY, serialised);
       } catch (error) {
         console.warn("[Calzy] could not save data — storage may be full", error);
       }
@@ -149,6 +155,74 @@ export function AppStoreProvider({ children }: { children: ReactNode }): JSX.Ele
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     };
   }, [data]);
+
+  /**
+   * Adopt writes from another tab.
+   *
+   * `load()` reads storage once at mount and the whole document is written under a
+   * single key, so without this a second tab's next mutation of any kind rewrote
+   * everything from its mount-time snapshot and permanently dropped whatever the
+   * first tab had logged in between.
+   *
+   * Last writer still wins - this is convergence, not a merge - but the tabs now
+   * converge instead of silently diverging. The `lastPersisted` check stops a tab
+   * from re-adopting its own echo, which would otherwise ping-pong forever.
+   */
+  useEffect(() => {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== STORAGE_KEY || event.newValue === null) return;
+      if (event.newValue === lastPersisted.current) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as Partial<AppData>;
+        lastPersisted.current = event.newValue;
+        setData({
+          ...emptyData,
+          ...parsed,
+          profile: { ...emptyData.profile, ...(parsed.profile ?? {}) },
+          meals: parsed.meals ?? [],
+          exercises: parsed.exercises ?? [],
+          water: parsed.water ?? [],
+          weights: parsed.weights ?? [],
+          photos: parsed.photos ?? [],
+          saved: parsed.saved ?? [],
+        });
+      } catch (error) {
+        console.warn("[Calzy] ignoring an unreadable update from another tab", error);
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  /**
+   * Re-base the selected day when the calendar day rolls over.
+   *
+   * `selectedDate` was fixed at mount, so a tab left open past midnight kept
+   * filing new meals, water and exercise onto yesterday - wrong ring, wrong
+   * macro totals, wrong streak.
+   *
+   * Only moves the user if they were sitting on "today"; a deliberately selected
+   * past day is left alone.
+   */
+  useEffect(() => {
+    const check = (): void => {
+      const today = startOfDay(new Date());
+      if (today.getTime() === todayRef.current.getTime()) return;
+      const wasOnToday = isSameDay(selectedDate, todayRef.current);
+      todayRef.current = today;
+      if (wasOnToday) setSelectedDate(today);
+    };
+
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [selectedDate]);
 
   const setProfile = useCallback((update: Partial<UserProfile>) => {
     setData((current) => ({ ...current, profile: { ...current.profile, ...update } }));
@@ -306,16 +380,29 @@ export function AppStoreProvider({ children }: { children: ReactNode }): JSX.Ele
     setData((current) => {
       const index = current.weights.findIndex((entry) => isSameDay(entry.date, date));
       const weights = [...current.weights];
+
+      // Replacing keeps the existing entry's timestamp, so that - not `date` - is
+      // the moment this reading represents. The Weight Journal passes midnight,
+      // while onboarding and the quick-log button store a real clock time.
+      let writtenIndex: number;
       if (index >= 0) {
         weights[index] = { ...weights[index], kilograms: rounded };
+        writtenIndex = index;
       } else {
         weights.push({ id: uid(), date: date.toISOString(), kilograms: rounded });
+        writtenIndex = weights.length - 1;
       }
-      const latest = weights.reduce<number>(
-        (max, entry) => Math.max(max, new Date(entry.date).getTime()),
+      const writtenAt = new Date(weights[writtenIndex].date).getTime();
+
+      // Compare against every OTHER entry. Reducing over the post-write array
+      // included the entry just written, so correcting an existing day's weight
+      // compared midnight against that entry's own later timestamp, lost, and
+      // left profile.currentWeightKg stale while the journal showed the new value.
+      const latestOther = weights.reduce<number>(
+        (max, entry, i) => (i === writtenIndex ? max : Math.max(max, new Date(entry.date).getTime())),
         0,
       );
-      const isLatest = new Date(date).getTime() >= latest;
+      const isLatest = writtenAt >= latestOther;
       return {
         ...current,
         weights,

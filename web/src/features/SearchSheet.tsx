@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Card } from "@/components/calzy/Primitives";
 import { FullScreenSheet } from "@/components/calzy/Sheet";
-import { isToday } from "@/lib/dates";
+import { stampOnDay } from "@/lib/dates";
 import { foodToItem, searchFoods, type FoodRecord } from "@/lib/foods";
 import { haptics } from "@/lib/haptics";
 import { currentSlot, itemsCalories, slotMeta } from "@/lib/nutrition";
@@ -12,11 +12,7 @@ import type { SavedFood } from "@/lib/types";
 import { useAppStore } from "@/store/AppStore";
 
 function loggedDate(selected: Date): string {
-  if (isToday(selected)) return new Date().toISOString();
-  const now = new Date();
-  const target = new Date(selected);
-  target.setHours(now.getHours(), now.getMinutes(), 0, 0);
-  return target.toISOString();
+  return stampOnDay(selected).toISOString();
 }
 
 /** Offline food search backed by the bundled 100-food table. */

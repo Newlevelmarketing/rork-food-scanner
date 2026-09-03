@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Card, PrimaryButton } from "@/components/calzy/Primitives";
 import { FullScreenSheet } from "@/components/calzy/Sheet";
-import { isToday } from "@/lib/dates";
+import { stampOnDay } from "@/lib/dates";
 import { haptics } from "@/lib/haptics";
 import { currentSlot, slotMeta, slotOrder } from "@/lib/nutrition";
 import type { AnalysisResult } from "@/lib/ai";
@@ -61,13 +61,7 @@ export function MealResult({
    * Seconds carry over so two meals logged onto a past day within the same
    * minute still order correctly.
    */
-  const mergedDate = (): Date => {
-    if (isToday(store.selectedDate)) return new Date();
-    const now = new Date();
-    const target = new Date(store.selectedDate);
-    target.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
-    return target;
-  };
+  const mergedDate = (): Date => stampOnDay(store.selectedDate);
 
   const save = (): void => {
     if (items.length === 0) return;

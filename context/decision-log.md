@@ -95,6 +95,37 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-09-03 — Multi-tab: converge on last-writer-wins rather than merge
+
+**Decision:** Add a `storage` listener so a tab adopts another tab's write, and stop there. No
+merge, no CRDT, no revision counter.
+
+**Context:** The audit found a second tab's next mutation of any kind rewrote the whole document
+from its mount-time snapshot, permanently dropping whatever the first tab had logged in between.
+
+**Options Considered:**
+
+1. Leave it — silent data loss.
+2. A monotonic revision field so a stale writer detects the conflict and refuses.
+3. Per-collection merge.
+4. Adopt the incoming blob; last writer wins.
+
+**Reasoning:** Option 4. This is a single-user, device-local food diary; two tabs open at once is
+uncommon and simultaneous conflicting edits rarer still. Option 3 is real engineering for a rare
+case. Option 2 detects the conflict but leaves nothing sensible to do about it without option 3.
+Option 4 turns permanent silent loss into convergence, which is the proportionate fix.
+
+**Impact:** Tabs converge. A genuinely simultaneous edit in two tabs still loses one side — that
+ceiling is deliberate and is stated in the code.
+
+An echo guard (`lastPersisted`) was required: adopting sets state, which triggers the persistence
+effect, which fires the other tab's listener. Without it the two tabs ping-pong writes forever.
+
+**Reversal Condition:** If the product ever gains sync or multi-device support, this becomes a real
+merge problem and needs revisiting properly.
+
+---
+
 ### 2026-09-03 — Admission control on the analysis proxy: fail open, and accept a speed bump
 
 **Decision:** Gate `/api/analyze` on an `ALLOWED_ORIGINS` allowlist and a 20-per-minute in-memory
