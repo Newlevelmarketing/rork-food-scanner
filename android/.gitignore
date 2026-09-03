@@ -33,4 +33,7 @@ local.properties
 
 # Generated config, never commit
 .env
+keystore.properties
+*.jks
+*.keystore
 app/src/main/java/**/Config.kt

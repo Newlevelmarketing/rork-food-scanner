@@ -1,8 +1,27 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Release signing credentials.
+//
+// The release build type previously used `signingConfigs.getByName("debug")`, which
+// signs with ~/.android/debug.keystore - whose password, alias and key password are
+// published constants. Play rejects a debug-signed upload outright, and a same-identity
+// APK could update an installed app in place and inherit its data directory.
+//
+// Credentials come from android/keystore.properties, which is gitignored. When that
+// file is absent the release build is left UNSIGNED, so the problem surfaces at build
+// or upload time instead of silently shipping a debug identity.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -17,10 +36,29 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Left false deliberately. Enabling minification here is untested, and
+            // kotlinx.serialization needs keep rules - turning it on blind risks a
+            // release-only runtime failure. Its own change, with a release build to
+            // verify against.
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

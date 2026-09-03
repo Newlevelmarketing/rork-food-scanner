@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rork.calzyandroid.AppViewModel
+import com.rork.calzyandroid.data.Legal
 import com.rork.calzyandroid.ui.components.CalzyCard
 import com.rork.calzyandroid.ui.components.CalzyToggle
 import com.rork.calzyandroid.ui.components.Hairline
@@ -352,17 +353,33 @@ fun SettingsScreen(viewModel: AppViewModel) {
             }
         }
 
-        Section(title = t("s.support")) {
-            LinkRow(icon = Icons.Outlined.Description, title = t("s.terms")) {
-                openLink("https://rork.app/terms")
-            }
-            RowDivider()
-            LinkRow(icon = Icons.Outlined.Lock, title = t("s.privacy")) {
-                openLink("https://rork.app/privacy")
-            }
-            RowDivider()
-            LinkRow(icon = Icons.Outlined.Mail, title = t("s.email")) {
-                openLink("mailto:support@calzy.app")
+        // Rows are gated on a configured URL rather than hardcoded, matching the rule
+        // web and iOS already apply: an empty value hides the row instead of shipping
+        // a dead or wrong link. These previously pointed at rork.app - the scaffolding
+        // vendor's documents, describing a different product - and at an unowned
+        // support address. See data/Legal.kt.
+        if (Legal.hasAnySupportLink) {
+            Section(title = t("s.support")) {
+                var needsDivider = false
+                if (Legal.TERMS_OF_USE_URL.isNotEmpty()) {
+                    LinkRow(icon = Icons.Outlined.Description, title = t("s.terms")) {
+                        openLink(Legal.TERMS_OF_USE_URL)
+                    }
+                    needsDivider = true
+                }
+                if (Legal.PRIVACY_POLICY_URL.isNotEmpty()) {
+                    if (needsDivider) RowDivider()
+                    LinkRow(icon = Icons.Outlined.Lock, title = t("s.privacy")) {
+                        openLink(Legal.PRIVACY_POLICY_URL)
+                    }
+                    needsDivider = true
+                }
+                if (Legal.SUPPORT_EMAIL.isNotEmpty()) {
+                    if (needsDivider) RowDivider()
+                    LinkRow(icon = Icons.Outlined.Mail, title = t("s.email")) {
+                        openLink("mailto:" + Legal.SUPPORT_EMAIL)
+                    }
+                }
             }
         }
 
