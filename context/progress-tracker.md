@@ -70,6 +70,29 @@ The browser-suite failure is environmental, not a code defect: it needs a one-ti
 
 Native apps were **not** built. They cannot be, from a clean clone — see Known Debt.
 
+## Native Verification — BLOCKING
+
+**Five units of native code have been written and never compiled.** Confirmed rather than assumed
+on 2026-09-03: `ANDROID_HOME` unset, no Android SDK in any standard location, and **no Java on
+PATH at all**, so Gradle cannot start. Xcode is impossible on Windows regardless.
+
+Units awaiting a build: **19** (iOS photo deletion + camera race), **20** (Android legal links +
+release signing), **25** (Android backup rules), **27** (Android data loss + AI errors), and the
+Android half of **12**.
+
+**Checklist: `context/native-verification-checklist.md`** — one pass covers all five, build steps
+first so a compile error surfaces before behavioural testing.
+
+The two checks that matter most:
+
+1. **iOS `Documents/images/` is empty after "Delete everything"** — this is the finding behind a
+   false claim in the shipped privacy policy.
+2. **Android `calzy-data-v1.json.unreadable` appears** when the store is corrupted — previously one
+   bad decode destroyed the entire history.
+
+Until this pass happens, adding further native work stacks unverified changes whose failures would
+be hard to attribute.
+
 ## Recently Completed
 
 **Unit 27 — Android: losing work, and the empty-key error**
