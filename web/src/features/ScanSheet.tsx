@@ -30,6 +30,14 @@ export function ScanSheet({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [status, setStatus] = useState<CameraStatus>("idle");
+  /**
+   * Bumped by "Try again" to re-run the camera effect.
+   *
+   * Retry used to call getUserMedia itself, which duplicated the acquisition
+   * without the effect's `cancelled` guard and mapped every failure to "denied".
+   * Going through the effect means one code path owns the stream's lifetime.
+   */
+  const [retryNonce, setRetryNonce] = useState<number>(0);
   const [staged, setStaged] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +92,7 @@ export function ScanSheet({
       cancelled = true;
       stopCamera();
     };
-  }, [open, stopCamera]);
+  }, [open, retryNonce, stopCamera]);
 
   const handle = useCallback(
     async (source: string | File): Promise<void> => {
@@ -151,11 +159,24 @@ export function ScanSheet({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-11 text-center">
             <CameraOff size={42} className="text-white/65" strokeWidth={1.4} />
             <p className="text-[17px] font-semibold text-white">
-              {status === "denied" ? "Camera access is off" : "Preparing camera…"}
+              {status === "denied"
+                ? "Camera access is off"
+                : status === "unavailable"
+                  ? "Camera unavailable"
+                  : "Preparing camera…"}
             </p>
-            {(status === "denied" || status === "unavailable") && (
+            {/* "unavailable" is terminal, not transient: there is no camera, or the
+                page is not on a secure origin. Telling those users to allow access
+                is advice that can never work, because no prompt will ever appear. */}
+            {status === "denied" && (
               <p className="text-[14px] text-white/70">
                 Allow camera access in your browser, or pick a photo from your library instead.
+              </p>
+            )}
+            {status === "unavailable" && (
+              <p className="text-[14px] text-white/70">
+                You can still pick a photo from your library, or add a meal by searching the food
+                database.
               </p>
             )}
           </div>
@@ -254,20 +275,15 @@ export function ScanSheet({
                 <button
                   type="button"
                   onClick={() => {
+                    // Re-run the camera effect rather than acquiring a second stream
+                    // here. The old inline version short-circuited to `undefined` when
+                    // navigator.mediaDevices was missing - so neither .then nor .catch
+                    // ran and the sheet pinned on "Preparing camera…" - assigned
+                    // streamRef with no cancellation guard, and mapped every failure to
+                    // "denied" including the ones that are really "unavailable".
                     setError(null);
                     setStaged(null);
-                    setStatus("starting");
-                    void navigator.mediaDevices
-                      ?.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-                      .then((stream) => {
-                        streamRef.current = stream;
-                        if (videoRef.current) {
-                          videoRef.current.srcObject = stream;
-                          void videoRef.current.play().catch(() => undefined);
-                        }
-                        setStatus("running");
-                      })
-                      .catch(() => setStatus("denied"));
+                    setRetryNonce((n) => n + 1);
                   }}
                   className="pressable flex-1 rounded-full bg-ink py-3 text-[15px] font-semibold text-white"
                 >
