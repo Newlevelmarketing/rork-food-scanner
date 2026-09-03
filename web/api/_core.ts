@@ -114,6 +114,12 @@ export function validateRequest(raw: unknown): AnalyzeRequest | ValidationFailur
   if (typeof body.content !== "string" || body.content.trim() === "") {
     return { status: 400, message: "content is required." };
   }
+  // The image path is capped by MAX_IMAGE_BYTES after decoding the data URL, but
+  // a text description had no upper bound at all - an unbounded prompt is both a
+  // cost and a latency problem.
+  if (body.kind === "text" && body.content.length > MAX_TEXT_LENGTH) {
+    return { status: 413, message: "Description is too long." };
+  }
   if (typeof body.language !== "string" || body.language.trim() === "") {
     return { status: 400, message: "language is required." };
   }
@@ -134,3 +140,61 @@ export function isValidationFailure(
 
 /** Largest inline image Gemini will accept comfortably, and our own ceiling. */
 export const MAX_IMAGE_BYTES = 4_000_000;
+
+/** Longest meal description accepted. A sentence or two is all the prompt asks for. */
+export const MAX_TEXT_LENGTH = 2_000;
+
+export interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+
+/**
+ * Fixed-window rate limit.
+ *
+ * Pure so it can be tested: the caller owns the store and supplies the clock.
+ *
+ * IMPORTANT, and stated here so nobody mistakes this for real protection: the
+ * store is per-instance memory. Serverless hosts run many instances and recycle
+ * them, so a determined caller spreading requests across instances gets a fresh
+ * bucket each time. This stops a naive loop from one client - the common case -
+ * and nothing more. Durable protection needs a shared store (Vercel KV, Upstash)
+ * or a WAF rule.
+ */
+export function allowRequest(
+  store: Map<string, RateLimitBucket>,
+  key: string,
+  now: number,
+  limit: number,
+  windowMs: number,
+): boolean {
+  const bucket = store.get(key);
+  if (bucket === undefined || now >= bucket.resetAt) {
+    store.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= limit) return false;
+  bucket.count += 1;
+  return true;
+}
+
+/**
+ * Whether a request's Origin is acceptable.
+ *
+ * `null` origin is allowed on purpose: native apps send no Origin header, and
+ * they are intended callers of this endpoint. When no allowlist is configured
+ * this returns true and the caller logs a warning - failing closed by default
+ * would break the first deployment before anyone had a chance to configure it.
+ */
+export function isOriginAllowed(origin: string | null, allowList: string[]): boolean {
+  if (allowList.length === 0) return true;
+  if (origin === null) return true;
+  return allowList.includes(origin);
+}
+
+export function parseAllowList(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}

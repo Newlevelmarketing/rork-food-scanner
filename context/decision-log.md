@@ -95,6 +95,43 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-09-03 — Admission control on the analysis proxy: fail open, and accept a speed bump
+
+**Decision:** Gate `/api/analyze` on an `ALLOWED_ORIGINS` allowlist and a 20-per-minute in-memory
+rate limit, with an unset allowlist **allowing** the request and logging a warning.
+
+**Context:** The 2026-09-03 audit found the proxy was an unauthenticated, unmetered relay to the
+operator's Gemini key. This was a **gap in unit 11's own spec** rather than deferred work — its Out
+of Scope list never mentioned abuse control either way.
+
+**Options Considered:**
+
+1. Leave it and rely on the URL being unpublished.
+2. Shared-store rate limiting (Vercel KV / Upstash) — durable, but needs a provider account.
+3. In-memory limiting plus an origin allowlist, shipped now.
+
+**Reasoning:** Option 3. Option 1 is not a position once the endpoint is deployed. Option 2 is the
+right end state but needs a decision this project has not made, and shipping nothing while waiting
+leaves the endpoint open.
+
+**Two trade-offs a future reader should not have to re-derive:**
+
+- **Fail open when `ALLOWED_ORIGINS` is unset.** Failing closed by default would break the first
+  deployment before it could be configured. The cost is that an unconfigured deployment is
+  unprotected, so `.env.example` and the README both say to set it before deploying.
+- **A null `Origin` is always allowed**, because native apps send none and are intended callers.
+  Unit 12 should give them a signed nonce rather than leaving that hole open permanently.
+
+**Impact — stated plainly:** the rate-limit store is **per-instance memory**. Serverless hosts run
+many instances, and `x-forwarded-for` is spoofable, so this stops a naive loop from one client and
+nothing more. It is a speed bump. **Durable protection still needs a shared store or a WAF rule**,
+and that remains open.
+
+**Reversal Condition:** Any evidence of real abuse, or the first bill that looks wrong, should
+promote this to option 2 immediately.
+
+---
+
 ### 2026-08-22 — Leave Rork: call Gemini through our own proxy
 
 **Decision:** Stand up `web/api/analyze.ts`, a stateless serverless proxy that calls Google Gemini

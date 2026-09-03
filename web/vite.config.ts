@@ -27,9 +27,31 @@ function analyzeApiDevServer(env: Record<string, string>): Plugin {
             for await (const chunk of req) body += String(chunk);
 
             const method = req.method ?? "POST";
+
+            // Forward the real headers. Hardcoding Content-Type dropped Origin and
+            // x-forwarded-for, so the handler's admission control could not be
+            // exercised locally at all - which defeats the point of running the real
+            // handler here. Hop-by-hop and length headers are skipped: the body is
+            // re-framed by Request, so a stale content-length is a mismatch.
+            const skip = new Set([
+              "connection",
+              "keep-alive",
+              "transfer-encoding",
+              "upgrade",
+              "content-length",
+              "host",
+            ]);
+            const headers = new Headers();
+            for (const [key, value] of Object.entries(req.headers)) {
+              if (value === undefined || skip.has(key.toLowerCase())) continue;
+              if (Array.isArray(value)) value.forEach((entry) => headers.append(key, entry));
+              else headers.set(key, value);
+            }
+            if (!headers.has("content-type")) headers.set("content-type", "application/json");
+
             const request = new Request("http://localhost/api/analyze", {
               method,
-              headers: { "Content-Type": "application/json" },
+              headers,
               body: method === "GET" || method === "HEAD" ? undefined : body,
             });
 

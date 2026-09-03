@@ -72,6 +72,61 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+### Audit remediation — units 19 to 22 (2026-09-03)
+
+The four highest-priority findings from `context/audit-2026-09-03.md`, in the order agreed.
+
+**Unit 19 — iOS** (`19-ios-audit-fixes.md`) — **UNVERIFIED, needs a Mac rebuild.**
+`eraseAll()` never touched `Documents/images/`, so every meal photo and body progress photo
+survived "Delete everything" and carried into iCloud Backup, while three shipped strings promised
+otherwise. Also fixed the `CameraService` start race — a **follow-up to unit 17**, which corrected
+`stop()` and missed the inverse in `start()`: `.running` was assigned synchronously while
+`startRunning()` was only queued, leaving the shutter live over a black preview. Added a
+`startGeneration` counter so the later assignment cannot itself race `stop()`, and a video-connection
+guard in `capture()`.
+
+**Unit 20 — Android** (`20-android-audit-fixes.md`) — **UNVERIFIED, needs a Gradle build.**
+Settings linked Privacy and Terms to `rork.app` — the scaffolding vendor's documents, describing a
+different product — and to an unowned support address. A new `data/Legal.kt` mirrors the rule web
+and iOS already apply: empty value hides the row. Release builds were signed with the **public
+debug keystore**, which Play rejects; they now read a gitignored `keystore.properties` and are left
+**unsigned** when it is absent, so the problem surfaces rather than shipping silently.
+
+**Unit 21 — Web camera** (`21-web-camera-states.md`) — **verified in the running app.**
+The web mirror still carried the exact bug unit 17 fixed on iOS. Retry was worse than reported:
+`navigator.mediaDevices?.getUserMedia(...)` short-circuits the whole chain to `undefined`, so
+neither `.then` nor `.catch` ran and the sheet pinned on "Preparing camera…". Retry now bumps a
+nonce into the effect's deps, so one code path owns the camera lifetime — which also closes the
+orphaned-MediaStream leak and the mis-mapping of every failure to `denied`.
+
+**Unit 22 — Proxy admission control** (`22-proxy-admission-control.md`) — **verified against a live
+endpoint.** `/api/analyze` was an unauthenticated, unmetered relay. This was a **gap in unit 11's
+own spec**, not deferred work. Now gated on `ALLOWED_ORIGINS` and 20 requests/minute, with a text
+length cap. **173 tests, up from 158.**
+
+> **It is a speed bump, not protection.** The bucket store is per-instance memory and serverless
+> hosts run many instances, so a caller spreading requests gets fresh buckets. Durable protection
+> needs a shared store or a WAF rule — still open.
+
+### A bug in unit 11a, found while verifying unit 22
+
+The first live test showed rate limiting working and **origin rejection silently doing nothing**.
+The dev middleware from unit 11a hardcoded `headers: { "Content-Type": ... }`, dropping `Origin`
+and `x-forwarded-for` — so local development could not exercise the handler's own admission control,
+defeating the point of running the real handler locally.
+
+**Rate limiting appeared to work *because* of the bug:** every caller fell back to the same
+`"unknown"` key and shared one bucket. A passing check was concealing a broken one.
+
+### Still open from the audit
+
+58 of the 62 findings. The next tier by impact: the **post-await state writes** in `DescribeSheet`
+and `ScanSheet` (results landing after a sheet closes — needs a run-token discipline plus an
+`AbortController` in `lib/ai.ts`), **Android Auto Backup** shipping the meal log to Google Drive
+undocumented, the **multi-tab blind write**, `selectedDate` **never re-basing across midnight**, and
+the **anonymous Toggle/Slider** controls on mandatory onboarding.
+
+
 **Full codebase audit — 2026-09-03** (`context/audit-2026-09-03.md`)
 
 Eight independent lenses over web, iOS, Android, the proxy and the legal copy. Every raw finding

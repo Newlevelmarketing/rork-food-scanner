@@ -106,6 +106,7 @@ package from `MainActivity.kt`, so it keeps working if the package is renamed.
 | --- | --- | --- |
 | `GEMINI_API_KEY` | **Server only** | Read by `web/api/analyze.ts`. Never give it a `VITE_` or `EXPO_PUBLIC_` prefix. |
 | `GEMINI_MODEL` | Server only | Optional. Confirm the current id against Google's docs. |
+| `ALLOWED_ORIGINS` | Server only | Comma-separated origins allowed to call `/api/analyze`. **Set before deploying** — empty means any site can spend your quota. |
 | `VITE_ANALYZE_ENDPOINT` | Client | Optional URL, not a credential. Only for a split deployment. |
 
 Vite inlines any `VITE_`-prefixed variable into the client bundle. That is

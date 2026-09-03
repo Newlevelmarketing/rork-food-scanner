@@ -18,12 +18,16 @@
 
 import {
   MAX_IMAGE_BYTES,
+  allowRequest,
   base64Bytes,
+  isOriginAllowed,
   isValidationFailure,
+  parseAllowList,
   parseDataURL,
   statusForUpstream,
   systemPrompt,
   validateRequest,
+  type RateLimitBucket,
 } from "./_core";
 
 /**
@@ -32,6 +36,28 @@ import {
  * change and a redeploy of three apps.
  */
 const DEFAULT_MODEL = "gemini-2.5-flash";
+
+/**
+ * Admission control.
+ *
+ * Without this the endpoint is an unauthenticated, unmetered relay to the
+ * operator's model key: anyone who learns the URL can POST in a loop and spend
+ * the quota until real users start getting rate-limited.
+ *
+ * See the note on `allowRequest` in `_core.ts` - the bucket store is per-instance
+ * memory, so this is a speed bump against a naive loop, not durable protection.
+ * A shared store or a WAF rule is what actually holds.
+ */
+const RATE_LIMIT_PER_WINDOW = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const buckets = new Map<string, RateLimitBucket>();
+
+/** Best-effort client identity. Spoofable, which is another reason this is only a speed bump. */
+function clientKey(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded !== null && forwarded.length > 0) return forwarded.split(",")[0].trim();
+  return request.headers.get("x-real-ip") ?? "unknown";
+}
 
 interface GeminiPart {
   text?: string;
@@ -53,6 +79,20 @@ export default async function handler(request: Request, env?: Record<string, str
   const source = env ?? (globalThis as { process?: { env?: Record<string, string> } }).process?.env ?? {};
   const apiKey = (source.GEMINI_API_KEY ?? "").trim();
   const model = (source.GEMINI_MODEL ?? "").trim() || DEFAULT_MODEL;
+
+  const allowList = parseAllowList(source.ALLOWED_ORIGINS);
+  if (allowList.length === 0) {
+    console.warn("[analyze] ALLOWED_ORIGINS is unset - any site can call this endpoint");
+  }
+  if (!isOriginAllowed(request.headers.get("origin"), allowList)) {
+    return json({ error: "forbiddenOrigin" }, 403);
+  }
+
+  if (!allowRequest(buckets, clientKey(request), Date.now(), RATE_LIMIT_PER_WINDOW, RATE_LIMIT_WINDOW_MS)) {
+    // 429 maps to the client's existing `rateLimited` copy: "Too many scans at
+    // once. Wait a moment and try again."
+    return json({ error: "rateLimited" }, 429);
+  }
 
   // 503 is what the client maps to "AI scanning isn't available in this build
   // yet". The server is the only party that can honestly know this.

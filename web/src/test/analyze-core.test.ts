@@ -1,11 +1,16 @@
 import {
   MAX_IMAGE_BYTES,
+  MAX_TEXT_LENGTH,
+  allowRequest,
   base64Bytes,
+  isOriginAllowed,
   isValidationFailure,
+  parseAllowList,
   parseDataURL,
   statusForUpstream,
   systemPrompt,
   validateRequest,
+  type RateLimitBucket,
 } from "../../api/_core";
 
 /**
@@ -179,5 +184,105 @@ describe("systemPrompt", () => {
     expect(prompt).toContain('"isFood"');
     expect(prompt).toContain('"healthScore"');
     expect(prompt).toContain("1-10");
+  });
+});
+
+
+describe("allowRequest", () => {
+  const LIMIT = 3;
+  const WINDOW = 60_000;
+
+  it("allows requests up to the limit", () => {
+    const store = new Map<string, RateLimitBucket>();
+    for (let i = 0; i < LIMIT; i += 1) {
+      expect(allowRequest(store, "a", 1000, LIMIT, WINDOW)).toBe(true);
+    }
+  });
+
+  it("blocks the request past the limit", () => {
+    const store = new Map<string, RateLimitBucket>();
+    for (let i = 0; i < LIMIT; i += 1) allowRequest(store, "a", 1000, LIMIT, WINDOW);
+    expect(allowRequest(store, "a", 1000, LIMIT, WINDOW)).toBe(false);
+  });
+
+  it("keeps callers in separate buckets", () => {
+    const store = new Map<string, RateLimitBucket>();
+    for (let i = 0; i < LIMIT; i += 1) allowRequest(store, "a", 1000, LIMIT, WINDOW);
+    expect(allowRequest(store, "a", 1000, LIMIT, WINDOW)).toBe(false);
+    expect(allowRequest(store, "b", 1000, LIMIT, WINDOW)).toBe(true);
+  });
+
+  it("opens a fresh window once the old one expires", () => {
+    const store = new Map<string, RateLimitBucket>();
+    for (let i = 0; i < LIMIT; i += 1) allowRequest(store, "a", 1000, LIMIT, WINDOW);
+    expect(allowRequest(store, "a", 1000, LIMIT, WINDOW)).toBe(false);
+    expect(allowRequest(store, "a", 1000 + WINDOW, LIMIT, WINDOW)).toBe(true);
+  });
+
+  it("does not reset early, one millisecond before the window ends", () => {
+    const store = new Map<string, RateLimitBucket>();
+    for (let i = 0; i < LIMIT; i += 1) allowRequest(store, "a", 1000, LIMIT, WINDOW);
+    expect(allowRequest(store, "a", 1000 + WINDOW - 1, LIMIT, WINDOW)).toBe(false);
+  });
+});
+
+describe("isOriginAllowed", () => {
+  it("allows anything when no allowlist is configured", () => {
+    // Failing closed by default would break the first deploy before anyone
+    // had a chance to set ALLOWED_ORIGINS; the handler logs a warning instead.
+    expect(isOriginAllowed("https://evil.example", [])).toBe(true);
+  });
+
+  it("allows a listed origin", () => {
+    expect(isOriginAllowed("https://app.example", ["https://app.example"])).toBe(true);
+  });
+
+  it("rejects an unlisted origin", () => {
+    expect(isOriginAllowed("https://evil.example", ["https://app.example"])).toBe(false);
+  });
+
+  it("allows a null origin, because native apps send none", () => {
+    expect(isOriginAllowed(null, ["https://app.example"])).toBe(true);
+  });
+
+  it("does not match on prefix", () => {
+    expect(isOriginAllowed("https://app.example.evil.com", ["https://app.example"])).toBe(false);
+  });
+});
+
+describe("parseAllowList", () => {
+  it("splits, trims and drops blanks", () => {
+    expect(parseAllowList(" https://a.example , https://b.example ,, ")).toEqual([
+      "https://a.example",
+      "https://b.example",
+    ]);
+  });
+
+  it("treats undefined and empty as no allowlist", () => {
+    expect(parseAllowList(undefined)).toEqual([]);
+    expect(parseAllowList("   ")).toEqual([]);
+  });
+});
+
+describe("text length cap", () => {
+  const good = { kind: "text", content: "two eggs", jesterMode: false, language: "English" };
+
+  it("accepts a description at the limit", () => {
+    const parsed = validateRequest({ ...good, content: "x".repeat(MAX_TEXT_LENGTH) });
+    expect(isValidationFailure(parsed)).toBe(false);
+  });
+
+  it("rejects one past the limit with 413", () => {
+    const failure = validateRequest({ ...good, content: "x".repeat(MAX_TEXT_LENGTH + 1) });
+    if (!isValidationFailure(failure)) throw new Error("expected failure");
+    expect(failure.status).toBe(413);
+  });
+
+  it("does not apply the text cap to image data URLs", () => {
+    // Images are capped by MAX_IMAGE_BYTES after decoding instead, which is a
+    // much larger budget - a data URL longer than MAX_TEXT_LENGTH is normal.
+    const dataUrl = "data:image/jpeg;base64," + "A".repeat(MAX_TEXT_LENGTH * 2);
+    const parsed = validateRequest({ ...good, kind: "image", content: dataUrl });
+    expect(isValidationFailure(parsed)).toBe(false);
   });
 });
