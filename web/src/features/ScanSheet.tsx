@@ -42,6 +42,16 @@ export function ScanSheet({
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Invalidates an in-flight analysis. Same problem as DescribeSheet: Escape
+   * still reaches the sheet while the analysing overlay covers the close button,
+   * so a request could outlive the sheet and write a stale error and staged photo
+   * into it - both of which then greeted the user on the next open, over a live
+   * camera.
+   */
+  const runRef = useRef<number>(0);
+  const abortRef = useRef<AbortController | null>(null);
+
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -49,6 +59,9 @@ export function ScanSheet({
 
   useEffect(() => {
     if (!open) {
+      runRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
       stopCamera();
       setStaged(null);
       setAnalyzing(false);
@@ -96,26 +109,43 @@ export function ScanSheet({
 
   const handle = useCallback(
     async (source: string | File): Promise<void> => {
+      runRef.current += 1;
+      const run = runRef.current;
+      const isCurrent = (): boolean => runRef.current === run;
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setError(null);
       setAnalyzing(true);
       stopCamera();
 
       try {
+        // toThumbnail and toBudgetedDataURL are not abortable, so each await
+        // needs the run check too - not just the fetch.
         const preview = await toThumbnail(source, 520);
+        if (!isCurrent()) return;
         if (preview) setStaged(preview);
 
         const payload = await toBudgetedDataURL(source);
+        if (!isCurrent()) return;
         if (!payload) {
           setAnalyzing(false);
           setError("That photo is too large. Try taking a new one.");
           return;
         }
 
-        const result = await analyzeImage(payload, store.profile.jesterMode, language.englishName);
+        const result = await analyzeImage(
+          payload,
+          store.profile.jesterMode,
+          language.englishName,
+          controller.signal,
+        );
+        if (!isCurrent()) return;
         haptics.success();
         setAnalyzing(false);
         onResult({ result, photo: preview ?? undefined, source: "photo" });
       } catch (analysisError) {
+        if (!isCurrent()) return;
         haptics.warning();
         setAnalyzing(false);
         setError(messageForError(analysisError));

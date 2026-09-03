@@ -72,6 +72,29 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 26 — Cancel abandoned analysis** (`26-cancel-abandoned-analysis.md`) — **verified by test.**
+
+Two audit findings, one root cause: **`lib/ai.ts` had no cancellation of any kind.** Both sheets
+`await` an analysis then write state unconditionally, and both are closable mid-flight — the header
+Cancel is never disabled while busy, and `Sheet.tsx` registers a *window* keydown handler, so Escape
+reaches the sheet even under the analysing overlay. With each sheet's reset living only in the
+close branch, a late success popped the review sheet for an abandoned request, and a late failure
+left a stale red banner over the next open — in ScanSheet's case over a live camera.
+
+Fixed with an `AbortSignal` through to `fetch` **plus** a run token per sheet. Both are needed:
+`toThumbnail` and `toBudgetedDataURL` are canvas work and cannot be aborted, so every `await` needs
+the token check — the signal stops wasted work and quota, the token stops stale writes.
+
+An abort now propagates as-is rather than flattening to `serverError`; reporting a user's own cancel
+as a failure would surface "Something went wrong" for their own action.
+
+**183 tests**, up from 179.
+
+**Honest limit:** the end-to-end race was not reproduced — that needs a live key and the React
+testing setup this project still lacks. The contract is tested; the wiring is verified by reading
+all six guard sites.
+
+
 ### Audit remediation, second pass — units 23 to 25 (2026-09-03)
 
 **Unit 23 — Web data integrity** (`23-web-data-integrity.md`) — **verified.** Four ways a write

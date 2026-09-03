@@ -1,6 +1,6 @@
 import { Sparkles, Wand2 } from "lucide-react";
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card, PrimaryButton } from "@/components/calzy/Primitives";
 import { FullScreenSheet } from "@/components/calzy/Sheet";
@@ -34,8 +34,24 @@ export function DescribeSheet({
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Invalidates an in-flight submit.
+   *
+   * The header Cancel button and the window Escape handler both stay live while
+   * busy, and only the footer button is disabled - so a request could still be
+   * running when the sheet closed. Its writes then landed in a closed sheet:
+   * onResult popped the review sheet for a request the user had abandoned, and a
+   * late setError left a stale red banner over an empty form the next time
+   * Describe was opened, because the reset only runs on the close transition.
+   */
+  const runRef = useRef<number>(0);
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (open) return;
+    runRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
     setText("");
     setBusy(false);
     setError(null);
@@ -44,14 +60,29 @@ export function DescribeSheet({
   const submit = async (): Promise<void> => {
     const trimmed = text.trim();
     if (trimmed.length < 3 || busy) return;
+
+    runRef.current += 1;
+    const run = runRef.current;
+    const isCurrent = (): boolean => runRef.current === run;
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setBusy(true);
     setError(null);
     try {
-      const result = await analyzeText(trimmed, store.profile.jesterMode, language.englishName);
+      const result = await analyzeText(
+        trimmed,
+        store.profile.jesterMode,
+        language.englishName,
+        controller.signal,
+      );
+      if (!isCurrent()) return;
       haptics.success();
       setBusy(false);
       onResult({ result, source: "text" });
     } catch (analysisError) {
+      // Covers both a deliberate cancel and a genuine failure arriving late.
+      if (!isCurrent()) return;
       haptics.warning();
       setBusy(false);
       setError(messageForError(analysisError));

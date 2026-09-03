@@ -187,7 +187,7 @@ interface AnalyzeBody {
   language: string;
 }
 
-async function send(body: AnalyzeBody): Promise<AnalysisResult> {
+async function send(body: AnalyzeBody, signal?: AbortSignal): Promise<AnalysisResult> {
   if (!isAIConfigured) throw new NutritionAIError("notConfigured");
 
   let response: Response;
@@ -196,8 +196,13 @@ async function send(body: AnalyzeBody): Promise<AnalysisResult> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (error) {
+    // An abort is the caller deliberately walking away, not a failure. Let it
+    // propagate as-is so the caller can tell the two apart; flattening it to
+    // serverError would surface "Something went wrong" for a cancel.
+    if (signal?.aborted === true) throw error;
     throw new NutritionAIError("serverError");
   }
 
@@ -219,16 +224,18 @@ export async function analyzeImage(
   dataURL: string,
   jesterMode: boolean,
   languageName: string = "English",
+  signal?: AbortSignal,
 ): Promise<AnalysisResult> {
-  return send({ kind: "image", content: dataURL, jesterMode, language: languageName });
+  return send({ kind: "image", content: dataURL, jesterMode, language: languageName }, signal);
 }
 
 export async function analyzeText(
   description: string,
   jesterMode: boolean,
   languageName: string = "English",
+  signal?: AbortSignal,
 ): Promise<AnalysisResult> {
-  return send({ kind: "text", content: description, jesterMode, language: languageName });
+  return send({ kind: "text", content: description, jesterMode, language: languageName }, signal);
 }
 
 export function resultToItems(result: AnalysisResult): FoodItem[] {

@@ -106,6 +106,58 @@ describe("request shape", () => {
   });
 });
 
+describe("cancellation", () => {
+  it("passes the signal through to fetch", async () => {
+    const spy = stubFetch(200, validPayload);
+    const controller = new AbortController();
+    await analyzeText("two eggs", false, "English", controller.signal);
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBe(controller.signal);
+  });
+
+  it("works without a signal, so existing callers are unaffected", async () => {
+    const spy = stubFetch(200, validPayload);
+    await analyzeText("two eggs", false);
+
+    const [, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeUndefined();
+  });
+
+  it("lets an abort propagate instead of flattening it to serverError", async () => {
+    // A cancel is the user walking away, not a failure. Reporting it as
+    // serverError would surface "Something went wrong" for their own action -
+    // and the sheets rely on telling the two apart.
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        controller.abort();
+        throw new DOMException("Aborted", "AbortError");
+      }),
+    );
+
+    await expect(
+      analyzeText("two eggs", false, "English", controller.signal),
+    ).rejects.toSatisfy((error: unknown) => !(error instanceof NutritionAIError));
+  });
+
+  it("still reports a genuine network failure as serverError", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("network down");
+    }));
+
+    try {
+      await analyzeText("two eggs", false, "English", controller.signal);
+      throw new Error("expected a rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(NutritionAIError);
+      expect((error as NutritionAIError).kind).toBe("serverError");
+    }
+  });
+});
+
 describe("status mapping", () => {
   const kindFor = async (status: number): Promise<string> => {
     stubFetch(status, "{}");
