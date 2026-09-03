@@ -103,10 +103,17 @@ export function Onboarding(): JSX.Element {
           {step === 1 && (
             <StepShell title="First, the basics" subtitle="We use these to calculate your daily energy needs.">
               <Card radius={22} padding={16}>
-                <label className="mb-2 block text-[15px] font-medium text-ink-soft">
+                {/* htmlFor/id, not just proximity: without the association this
+                    announced as an unnamed text field on the app's mandatory
+                    first screen. */}
+                <label
+                  htmlFor="onboarding-name"
+                  className="mb-2 block text-[15px] font-medium text-ink-soft"
+                >
                   What should we call you?
                 </label>
                 <input
+                  id="onboarding-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Your name"
@@ -458,6 +465,7 @@ export function BigSlider({
         min={min}
         max={max}
         step={step}
+        label={title}
         tint={tint}
         onChange={(next) => {
           haptics.selection();

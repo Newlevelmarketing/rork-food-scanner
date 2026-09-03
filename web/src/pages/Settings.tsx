@@ -146,6 +146,7 @@ export function Settings(): JSX.Element {
               <p className="text-[12px] text-ink-faint">{t("s.jesterSub")}</p>
             </div>
             <Toggle
+              label={t("s.jester")}
               checked={profile.jesterMode}
               onChange={(value) => {
                 haptics.selection();

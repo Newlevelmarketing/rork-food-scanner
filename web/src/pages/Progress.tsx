@@ -558,6 +558,8 @@ function WeightSheet({ date, onClose }: { date: Date | null; onClose: () => void
             min={35}
             max={200}
             step={0.1}
+            label="Weight"
+
             onChange={(next) => {
               haptics.selection();
               setValue(next);
@@ -617,14 +619,28 @@ function BodyMetricsSheet({
               <span className="text-[14px] font-semibold text-ink">Height</span>
               <span className="metric text-[15px] text-ink-soft">{height.toFixed(0)} cm</span>
             </div>
-            <Slider value={height} min={130} max={220} step={1} onChange={setHeight} />
+            <Slider
+              value={height}
+              min={130}
+              max={220}
+              step={1}
+              onChange={setHeight}
+              label="Height"
+            />
           </div>
           <div>
             <div className="flex items-baseline justify-between">
               <span className="text-[14px] font-semibold text-ink">Weight</span>
               <span className="metric text-[15px] text-ink-soft">{weight.toFixed(1)} kg</span>
             </div>
-            <Slider value={weight} min={35} max={200} step={0.1} onChange={setWeight} />
+            <Slider
+              value={weight}
+              min={35}
+              max={200}
+              step={0.1}
+              onChange={setWeight}
+              label="Weight"
+            />
           </div>
         </div>
 

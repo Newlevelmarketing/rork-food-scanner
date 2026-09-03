@@ -81,6 +81,7 @@ export function ExerciseSheet({
             min={5}
             max={180}
             step={5}
+            label="Duration"
             tint="hsl(var(--flame))"
             onChange={(value) => {
               haptics.selection();

@@ -106,6 +106,7 @@ function SliderRow({
         tint={tint}
         disabled={disabled}
         onChange={onChange}
+        label={title}
       />
     </div>
   );
@@ -162,7 +163,14 @@ export function AccountSheet({ open, onClose }: SheetProps): JSX.Element {
             <Label>Birth year</Label>
             <span className="metric text-[16px] text-ink">{birthYear}</span>
           </div>
-          <Slider value={birthYear} min={1940} max={2012} step={1} onChange={setBirthYear} />
+          <Slider
+            value={birthYear}
+            min={1940}
+            max={2012}
+            step={1}
+            onChange={setBirthYear}
+            label="Birth year"
+          />
         </div>
       </Card>
     </Scaffold>
@@ -215,7 +223,7 @@ export function NutritionGoalsSheet({ open, onClose }: SheetProps): JSX.Element 
             <p className="text-[16px] font-semibold text-ink">Custom targets</p>
             <p className="text-[12px] text-ink-faint">Off = calculated from your body and goal</p>
           </div>
-          <Toggle checked={custom} onChange={setCustom} />
+          <Toggle checked={custom} onChange={setCustom} label="Custom targets" />
         </div>
       </Card>
 
@@ -467,7 +475,7 @@ export function RemindersSheet({ open, onClose }: SheetProps): JSX.Element {
             <p className="text-[16px] font-semibold text-ink">Daily nudges</p>
             <p className="text-[12px] text-ink-faint">Gentle reminders so nothing goes unlogged</p>
           </div>
-          <Toggle checked={enabled} onChange={setEnabled} />
+          <Toggle checked={enabled} onChange={setEnabled} label="Daily nudges" />
         </div>
       </Card>
 

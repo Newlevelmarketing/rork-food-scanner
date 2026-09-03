@@ -268,14 +268,22 @@ export function Segmented<T extends string>({
   );
 }
 
-/** iOS-style toggle switch. */
+/**
+ * iOS-style toggle switch.
+ *
+ * `label` is required, not optional. The visible title always lives in a sibling
+ * element, so without it this announced as "switch, off" with no subject - and an
+ * optional prop would just have been omitted again at the next call site.
+ */
 export function Toggle({
   checked,
   onChange,
+  label,
   tint = "hsl(var(--ink))",
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
+  label: string;
   tint?: string;
 }): JSX.Element {
   return (
@@ -283,6 +291,7 @@ export function Toggle({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className="relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-300"
       style={{ backgroundColor: checked ? tint : "rgba(0,0,0,0.1)" }}
@@ -295,13 +304,21 @@ export function Toggle({
   );
 }
 
-/** Range input wired to the shared Calzy slider styling. */
+/**
+ * Range input wired to the shared Calzy slider styling.
+ *
+ * `label` is required for the same reason as on `Toggle`: the visible title is a
+ * plain sibling span with no id, so nothing associated it with the input. The
+ * onboarding flow is six screens of these, and every one announced as an
+ * anonymous "slider".
+ */
 export function Slider({
   value,
   min,
   max,
   step,
   onChange,
+  label,
   tint = "hsl(var(--ink))",
   disabled,
 }: {
@@ -310,6 +327,7 @@ export function Slider({
   max: number;
   step: number;
   onChange: (value: number) => void;
+  label: string;
   tint?: string;
   disabled?: boolean;
 }): JSX.Element {
@@ -317,6 +335,7 @@ export function Slider({
   return (
     <input
       type="range"
+      aria-label={label}
       className="calzy-slider disabled:opacity-50"
       value={value}
       min={min}
