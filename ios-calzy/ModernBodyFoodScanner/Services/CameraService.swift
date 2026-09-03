@@ -20,7 +20,15 @@ final class CameraService: NSObject {
     private let queue = DispatchQueue(label: "com.calzy.camera.session")
     private var isConfigured = false
 
+    /// Invalidates an in-flight `start()` when `stop()` or a newer `start()` arrives,
+    /// so a late "session is up" callback cannot claim `.running` for a session that
+    /// has since been stopped.
+    private var startGeneration = 0
+
     func start() async {
+        startGeneration += 1
+        let generation = startGeneration
+
         let granted = await requestAccess()
         guard granted else {
             status = .denied
@@ -34,13 +42,26 @@ final class CameraService: NSObject {
             }
             isConfigured = true
         }
-        status = .running
-        queue.async { [session] in
+        // Do NOT flip to .running here. startRunning() is only *queued* below, so
+        // assigning the flag synchronously leaves the shutter enabled over a black
+        // preview; a tap in that window reaches capturePhoto() with no active video
+        // connection, which throws an uncatchable exception. Claim .running only once
+        // the session really is running.
+        queue.async { [weak self, session] in
             if !session.isRunning { session.startRunning() }
+            let isRunning = session.isRunning
+            Task { @MainActor in
+                guard let self, self.startGeneration == generation, isRunning else { return }
+                self.status = .running
+            }
         }
     }
 
     func stop() {
+        // Invalidate any start still in flight, or its completion could flip status
+        // back to .running for the session we are about to stop.
+        startGeneration += 1
+
         // Drop out of .running as well as stopping the session. Without this the
         // view still believes the camera is live and keeps rendering a preview
         // layer over a stopped session, which shows the last frame frozen.
@@ -88,6 +109,10 @@ final class CameraService: NSObject {
 
     func capture() {
         guard status == .running else { return }
+        // Belt and braces against the flag and the session disagreeing: capturing
+        // without an active video connection is an uncatchable exception, not an
+        // error we could recover from.
+        guard output.connection(with: .video)?.isActive == true else { return }
         let settings = AVCapturePhotoSettings()
         output.capturePhoto(with: settings, delegate: self)
     }

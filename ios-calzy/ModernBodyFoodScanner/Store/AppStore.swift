@@ -297,6 +297,18 @@ final class AppStore {
     // MARK: - Reset
 
     func eraseAll() {
+        // The JSON is only an index. Photos live as JPEGs in `imagesDirectory`, so
+        // resetting `data` alone leaves every meal and progress photo on disk as an
+        // orphan no code path can reach - and carries them into iCloud Backup -
+        // while three shipped strings promise they are gone: the confirmation
+        // dialog in SettingsView, privacy policy section 5, and the FAQ.
+        //
+        // `deleteMeal` and `deletePhoto` already remove their own file; this is the
+        // one destructive path that did not.
+        let manager = FileManager.default
+        try? manager.removeItem(at: imagesDirectory)
+        try? manager.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+
         data = AppData()
         selectedDate = Calendar.current.startOfDay(for: Date())
         persist()
