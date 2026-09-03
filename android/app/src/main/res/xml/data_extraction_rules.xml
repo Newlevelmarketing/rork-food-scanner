@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (targetSdk 31 and above).
+
+  Cloud backup is excluded on purpose. ModernBody stores everything - the meal
+  log, and body progress photos - inline in one file in its own data directory.
+  With no rules declared, Android's default copied all of it to the user's Google
+  Drive, which the privacy policy never disclosed and which is a surprising place
+  for body photos to end up.
+
+  Device-to-device transfer stays enabled, so moving to a new phone still carries
+  the data across. That is a direct handset-to-handset copy, not a cloud upload.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+
+    <device-transfer>
+        <include domain="file" path="." />
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

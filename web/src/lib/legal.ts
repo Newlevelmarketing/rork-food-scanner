@@ -78,7 +78,7 @@ export const privacyPolicy: LegalDocument = {
     },
     {
       kind: "paragraph",
-      text: "Because this data is stored locally, it is included in your device backups if you use iCloud Backup or a computer backup. Those backups are governed by Apple's privacy policy, not ours.",
+      text: "Because this data is stored locally, how it is backed up depends on the platform. On iPhone it is included in your device backups if you use iCloud Backup or a computer backup, and those backups are governed by Apple's privacy policy, not ours. On Android we exclude the app from Google Drive cloud backup, so your meal log and photos are not uploaded there; a direct phone-to-phone transfer when you change handsets does carry them across. In the web app the data lives in your browser's storage and is not backed up by us at all.",
     },
 
     { kind: "heading", text: "2. Information sent for AI analysis" },

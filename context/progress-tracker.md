@@ -72,6 +72,48 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+### Audit remediation, second pass — units 23 to 25 (2026-09-03)
+
+**Unit 23 — Web data integrity** (`23-web-data-integrity.md`) — **verified.** Four ways a write
+landed in the wrong place: a second tab erasing what the first logged, an app open past midnight
+filing onto yesterday, `logWeight` comparing an entry against an array containing itself, and
+exercise ignoring the day on screen. Fixing the last surfaced a fifth: the day-stamping rule
+existed **twice and had drifted** — one copy carried seconds so same-minute entries stayed ordered,
+the other zeroed them. Now one tested helper, `stampOnDay`.
+
+**Unit 24 — Accessible names** (`24-accessible-names.md`) — **verified.** Closes the audit's last
+`high`. `Toggle` and `Slider` took no label, so onboarding was six mandatory screens of anonymous
+sliders. `label` is now **required**, making the compiler the enforcement mechanism — it surfaced
+six unlabelled sites immediately. Also un-blocked pinch zoom, after confirming
+`touch-action: manipulation` was what actually suppressed double-tap.
+
+**Unit 25 — Android backup** — **UNVERIFIED, needs a Gradle build.** `allowBackup="true"` with no
+rules copied the whole data directory, body photos included, to Google Drive undisclosed. Cloud
+backup is now excluded on Android 12+ while device-to-device transfer is kept; pre-12 has no such
+split, so backup is off there entirely. The privacy policy's backup paragraph described only
+iCloud — accurate when the text was iOS-only, misleading once the page served all three platforms —
+and now states each platform separately.
+
+**Running totals:** 179 tests. Typecheck 0, lint unchanged at 9 warnings, build passes.
+
+**Legal copy changed again** in unit 25, so it needs the same human sign-off as the earlier wording
+edits.
+
+### Still open from the audit
+
+Roughly 45 findings. The next tier:
+
+- **Post-await state writes** in `DescribeSheet` and `ScanSheet` — analysis results landing after a
+  sheet closes. Needs a run-token discipline plus an `AbortController` in `lib/ai.ts`; there is
+  currently no cancellation anywhere in that file.
+- **Sheet dialog semantics** — no focus trap, no focus restoration, background UI stays tabbable.
+- **Android config-change losses** — onboarding restarts at step 0, and a completed scan result is
+  discarded, both because state is held in `remember`.
+- **Android main-thread image work** and the inert reminders screen that writes a setting nothing
+  reads.
+- The remaining **drift** findings, including `healthScore` being clamped only on web.
+
+
 ### Audit remediation — units 19 to 22 (2026-09-03)
 
 The four highest-priority findings from `context/audit-2026-09-03.md`, in the order agreed.
