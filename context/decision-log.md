@@ -95,6 +95,32 @@ suite in `web/src/test/ai.test.ts` pins the behaviour, so the swap is safe to ma
 
 ---
 
+### 2026-09-03 — Leave the Android scan draft unsaveable rather than risk a Bundle crash
+
+**Decision:** Do not apply `rememberSaveable` to the `MealDraft` held in `AppNavigation.kt`. Leave
+the configuration-change loss in place for now.
+
+**Context:** A completed `MealDraft` is held in `remember`, so a rotation discards a finished AI
+analysis the user has already spent time and quota on. The obvious fix is `rememberSaveable`.
+
+**Reasoning:** `MealDraft` carries a **base64 photo**, and saved-instance-state travels through a
+Bundle with a practical size ceiling. Putting a photo there risks `TransactionTooLargeException` —
+**a crash, which is strictly worse than the loss it would prevent.**
+
+The correct fix is to hoist the draft into the ViewModel, which survives configuration changes
+without a Bundle. That requires moving `MealDraft` out of `ui.navigation` into `data`, because a
+ViewModel holding a UI-package type is the wrong dependency direction — a multi-file refactor with
+import churn across the sheets.
+
+**Not attempted without a compiler.** Several unverified native units are already queued, and a
+cross-package refactor whose failure mode is a broken build is a poor thing to stack on top of
+them blind.
+
+**Reversal Condition:** Do it properly once someone can run a Gradle build — hoist to the
+ViewModel, do not reach for `rememberSaveable`.
+
+---
+
 ### 2026-09-03 — Multi-tab: converge on last-writer-wins rather than merge
 
 **Decision:** Add a `storage` listener so a tab adopts another tab's write, and stop there. No

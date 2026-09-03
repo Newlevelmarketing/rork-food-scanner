@@ -72,6 +72,36 @@ Native apps were **not** built. They cannot be, from a clean clone — see Known
 
 ## Recently Completed
 
+**Unit 27 — Android: losing work, and the empty-key error**
+(`27-android-audit-fixes-two.md`) — **UNVERIFIED, needs a Gradle build.**
+
+Five fixes, three of them about the app destroying the user's data:
+
+1. **A single decode failure wiped everything.** `load()` caught every exception and returned an
+   empty `AppData`, and the next mutation wrote that over the file. One bad decode — a corrupt
+   write, a schema change — silently destroyed the whole meal history. The unreadable file is now
+   copied aside first, and only the *first* failure is kept, since after that the app is running on
+   an empty document.
+2. **The last entry was lost if the ViewModel died.** The 260 ms debounce lives on `viewModelScope`,
+   which is cancelled as part of clearing. `onCleared()` now flushes synchronously — main-thread
+   I/O, deliberately, because losing the entry is worse than a brief write.
+3. **Onboarding restarted at step 0** on any configuration change; all nine answers were in
+   `remember`. Now `rememberSaveable`, with an explicit `enumSaver` rather than relying on the
+   default saver's Serializable inference.
+4. **Empty key reported the wrong error** — identical to the iOS bug fixed and verified in unit 17.
+5. **Cancellation was rethrown as a server error**, breaking structured concurrency and telling the
+   user something failed when they had navigated away.
+
+**Deliberately not fixed: the scan draft.** `AppNavigation.kt` loses a completed analysis on
+rotation, but `MealDraft` carries a base64 photo and saved-instance-state goes through a Bundle
+with a size ceiling — `rememberSaveable` there risks `TransactionTooLargeException`, **a crash,
+which is worse than the loss.** The right fix hoists it into the ViewModel, which means moving the
+type out of `ui.navigation` into `data`. Not attempted without a compiler, with unverified native
+work already queued. Recorded in `context/decision-log.md`.
+
+**Native verification backlog is now five units:** 19, 20, 25, 27, and the Android side of unit 12.
+
+
 **Unit 26 — Cancel abandoned analysis** (`26-cancel-abandoned-analysis.md`) — **verified by test.**
 
 Two audit findings, one root cause: **`lib/ai.ts` had no cancellation of any kind.** Both sheets

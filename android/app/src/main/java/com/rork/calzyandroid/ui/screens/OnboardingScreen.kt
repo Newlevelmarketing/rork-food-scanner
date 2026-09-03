@@ -50,6 +50,8 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,19 +85,37 @@ import kotlin.math.roundToInt
 
 private const val TOTAL_STEPS = 6
 
+/**
+ * Saves an enum by name.
+ *
+ * `rememberSaveable`'s default saver relies on the value being Bundle-storable.
+ * Enums are Serializable so that generally works, but naming it explicitly means
+ * the behaviour does not depend on that inference holding.
+ */
+private inline fun <reified T : Enum<T>> enumSaver(): Saver<T, String> =
+    Saver(save = { it.name }, restore = { enumValueOf<T>(it) })
+
 /** First-run flow that builds the user's profile and calculates their daily plan. */
 @Composable
 fun OnboardingScreen(viewModel: AppViewModel) {
-    var step by remember { mutableIntStateOf(0) }
-    var name by remember { mutableStateOf("") }
-    var sex by remember { mutableStateOf(Sex.male) }
-    var birthYear by remember { mutableIntStateOf(1996) }
-    var height by remember { mutableDoubleStateOf(176.0) }
-    var weight by remember { mutableDoubleStateOf(80.0) }
-    var goal by remember { mutableStateOf(GoalDirection.lose) }
-    var goalWeight by remember { mutableDoubleStateOf(74.0) }
-    var rate by remember { mutableDoubleStateOf(0.5) }
-    var activity by remember { mutableStateOf(ActivityLevel.light) }
+    // rememberSaveable, not remember: every answer here was held in composition
+    // only, so a rotation - or the system recreating the activity after a spell in
+    // the background - restarted the mandatory six-step flow at step 0 with the
+    // defaults, discarding everything the user had entered.
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var sex by rememberSaveable(stateSaver = enumSaver<Sex>()) { mutableStateOf(Sex.male) }
+    var birthYear by rememberSaveable { mutableIntStateOf(1996) }
+    var height by rememberSaveable { mutableDoubleStateOf(176.0) }
+    var weight by rememberSaveable { mutableDoubleStateOf(80.0) }
+    var goal by rememberSaveable(stateSaver = enumSaver<GoalDirection>()) {
+        mutableStateOf(GoalDirection.lose)
+    }
+    var goalWeight by rememberSaveable { mutableDoubleStateOf(74.0) }
+    var rate by rememberSaveable { mutableDoubleStateOf(0.5) }
+    var activity by rememberSaveable(stateSaver = enumSaver<ActivityLevel>()) {
+        mutableStateOf(ActivityLevel.light)
+    }
 
     val draft = UserProfile(
         name = name,

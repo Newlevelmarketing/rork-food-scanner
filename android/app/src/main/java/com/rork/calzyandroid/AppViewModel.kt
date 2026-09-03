@@ -49,10 +49,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private var saveJob: Job? = null
 
+    /**
+     * Loads the store, preserving anything it cannot read.
+     *
+     * A decode failure used to fall straight through to an empty `AppData`, and
+     * the next mutation then wrote that empty document over the file - so one bad
+     * decode, from a corrupt write or a schema change, silently destroyed the
+     * user's entire history with no way back.
+     *
+     * The unreadable file is now copied aside first. Only the first failure is
+     * kept: after that the app is running on an empty document, so a later backup
+     * would just overwrite the one copy that still holds real data.
+     */
     private fun load(): AppData = try {
         if (store.exists()) json.decodeFromString<AppData>(store.readText()) else AppData()
     } catch (error: Exception) {
+        runCatching {
+            val backup = File(store.parentFile, store.name + ".unreadable")
+            if (!backup.exists()) store.copyTo(backup)
+        }
         AppData()
+    }
+
+    /** Writes the current document immediately, off the debounce. */
+    private fun persistNow() {
+        try {
+            store.writeText(json.encodeToString(AppData.serializer(), _data.value))
+        } catch (error: Exception) {
+            // Storage may be full; state stays live in memory.
+        }
     }
 
     /** Debounced persistence so slider drags don't thrash the disk. */
@@ -61,12 +86,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         saveJob?.cancel()
         saveJob = viewModelScope.launch(Dispatchers.IO) {
             delay(260)
-            try {
-                store.writeText(json.encodeToString(AppData.serializer(), _data.value))
-            } catch (error: Exception) {
-                // Storage may be full; state stays live in memory.
-            }
+            persistNow()
         }
+    }
+
+    /**
+     * Flush a pending write before the scope that owns it dies.
+     *
+     * `viewModelScope` is cancelled as part of clearing, taking the debounced
+     * write with it - so anything logged inside the last 260 ms was lost when the
+     * process went away. Writing synchronously here is main-thread I/O, which is
+     * not free, but it is one small file and it is the last chance to keep the
+     * user's most recent entry.
+     */
+    override fun onCleared() {
+        if (saveJob?.isActive == true) {
+            saveJob?.cancel()
+            persistNow()
+        }
+        super.onCleared()
     }
 
     fun setSelectedDate(date: LocalDate) {

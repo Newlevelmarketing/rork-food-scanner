@@ -11,6 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -128,6 +129,13 @@ object AiService {
         jesterMode: Boolean,
         languageName: String,
     ): AnalysisResult {
+        // toolkitUrl() falls back to the public gateway, so without this a build
+        // with no key looked configured, sent an empty bearer token, collected a
+        // 401 and told the user analysis was temporarily unavailable and to try
+        // again later - for a missing build-time credential no retry can supply.
+        // iOS carried the identical bug and was fixed in unit 17.
+        if (toolkitKey().isEmpty()) throw NutritionAiException(AiErrorKind.NotConfigured)
+
         val body = buildJsonObject {
             put("model", MODEL)
             put("temperature", 0.2)
@@ -171,6 +179,12 @@ object AiService {
                 header(HttpHeaders.Authorization, "Bearer ${toolkitKey()}")
                 setBody(body.toString())
             }
+        } catch (error: CancellationException) {
+            // Structured concurrency: a cancelled coroutine must be allowed to
+            // unwind. Converting this to a ServerError told the user something
+            // had gone wrong when in fact they had navigated away, and left the
+            // parent scope believing the child completed normally.
+            throw error
         } catch (error: Exception) {
             throw NutritionAiException(AiErrorKind.ServerError)
         }
