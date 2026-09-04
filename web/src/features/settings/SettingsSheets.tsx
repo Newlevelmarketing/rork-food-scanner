@@ -488,6 +488,11 @@ export function RemindersSheet({ open, onClose }: SheetProps): JSX.Element {
               <div key={slot.hour}>
                 <button
                   type="button"
+                  // pointer-events-none on the card hides these from a mouse but
+                  // leaves them tabbable and activatable by keyboard, so the slots
+                  // could be toggled while reminders were switched off.
+                  disabled={!enabled}
+                  aria-pressed={active}
                   onClick={() => {
                     haptics.selection();
                     setHours((current) =>

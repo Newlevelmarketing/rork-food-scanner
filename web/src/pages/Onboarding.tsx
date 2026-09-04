@@ -293,12 +293,15 @@ export function Onboarding(): JSX.Element {
         <PrimaryButton onClick={next}>
           {step === TOTAL_STEPS - 1 ? "Start tracking" : "Continue"}
         </PrimaryButton>
-        <div className="mt-[10px] flex h-[18px] justify-center">
+        {/* min-h-[44px] and padding on the control itself: the row was 18px tall,
+            so the only way back through onboarding was a target less than half
+            the 44pt minimum. */}
+        <div className="mt-[10px] flex min-h-[44px] items-center justify-center">
           {step > 0 && (
             <button
               type="button"
               onClick={() => setStep((current) => current - 1)}
-              className="text-[14px] font-medium text-ink-faint"
+              className="px-6 py-[11px] text-[14px] font-medium text-ink-faint"
             >
               Back
             </button>

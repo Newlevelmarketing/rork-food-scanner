@@ -14,7 +14,7 @@ import {
   Globe,
 } from "lucide-react";
 import type { JSX } from "react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Card, Toggle } from "@/components/calzy/Primitives";
 import { Paywall } from "@/features/Paywall";
@@ -49,6 +49,15 @@ export function Settings(): JSX.Element {
   const [route, setRoute] = useState<SettingsRoute>(null);
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [confirmErase, setConfirmErase] = useState<boolean>(false);
+  const cancelEraseRef = useRef<HTMLButtonElement>(null);
+
+  // The confirmation swaps in inline with no role and no focus move, so a
+  // screen-reader user got no announcement that a destructive choice had
+  // appeared, and a keyboard user was left focused on a button that no longer
+  // existed. Land on Cancel - the safe option - not on "Erase everything".
+  useEffect(() => {
+    if (confirmErase) cancelEraseRef.current?.focus();
+  }, [confirmErase]);
 
   const displayName = profile.name.trim() === "" ? "Your profile" : profile.name;
   const initials =
@@ -210,12 +219,13 @@ export function Settings(): JSX.Element {
 
         <div className="px-5">
           {confirmErase ? (
-            <div className="flex flex-col gap-3">
+            <div role="alertdialog" aria-label="Erase all data" className="flex flex-col gap-3">
               <p className="text-center text-[13px] text-ink-soft">
                 This removes every meal, weight and photo from this browser.
               </p>
               <div className="flex gap-3">
                 <button
+                  ref={cancelEraseRef}
                   type="button"
                   onClick={() => setConfirmErase(false)}
                   className="pressable flex-1 rounded-full bg-black/[0.06] py-[15px] text-[15px] font-semibold text-ink"

@@ -95,6 +95,36 @@ be hard to attribute.
 
 ## Recently Completed
 
+**Unit 30 — The rest of the web audit list** (`30-web-audit-remainder.md`) — **verified.**
+
+Carousel dots that never moved off page 0, a tab bar signalling selection by colour alone, an
+erase confirmation that announced nothing and left focus on a button that no longer existed, an
+18 px Back control on the only way back through onboarding, and reminder slots that stayed
+keyboard-operable behind `pointer-events-none` while switched off.
+
+Verified: `role="tablist"` with `aria-selected` `["true","false","false"]`; the active dot moving
+**0 → 1 → 0** with scroll; the confirmation announcing as an `alertdialog` with focus on **Cancel**;
+all six reminder slots `disabled` when the toggle is off.
+
+**Worth recording how the carousel was checked.** A first attempt with a faked 400 px page width
+proved nothing — `scrollLeft` clamped to 80 against a `scrollWidth` of 236 in a zero-layout pane.
+Re-run with a width derived from the container's real `scrollWidth`, the dot tracked correctly.
+**The apparent failure was a bad test, not a bad fix** — worth chasing rather than recording either
+as a pass or as a defect.
+
+### The web audit list is now clear
+
+Every web finding from `context/audit-2026-09-03.md` is addressed, except two deliberately
+deferred and worth a decision:
+
+1. **`/privacy` and `/terms` hotlink a Google-hosted webfont** — Google sees the IP of anyone
+   reading the privacy policy. Fixing it means committing font files; an assets decision.
+2. **Large parts of the UI bypass the 32-locale catalogue** — not an audit finding, but a standing
+   violation of `context/execution-standards.md` and larger than anything that was on the list.
+
+**Everything else outstanding is Android, or blocked on the native verification pass.**
+
+
 **Unit 29 — Stale UI state and silent failures** (`29-web-state-and-feedback.md`) — **verified.**
 
 Four findings where the UI showed something stale or failed without saying so: a progress-photo

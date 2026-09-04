@@ -26,7 +26,13 @@ export function TabBar({
 
   return (
     <nav className="tabbar-bottom pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-6 sm:px-10">
-      <div className="calzy-glass pointer-events-auto flex w-full max-w-[340px] gap-1 rounded-full p-[6px]">
+      {/* role/aria-selected, because the active tab was signalled by colour and
+          weight alone - invisible to assistive tech, and to anyone who cannot
+          distinguish the two shades. Index.tsx already claims role="tabpanel". */}
+      <div
+        role="tablist"
+        className="calzy-glass pointer-events-auto flex w-full max-w-[340px] gap-1 rounded-full p-[6px]"
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === active;
           const Icon = tab.icon;
@@ -34,6 +40,8 @@ export function TabBar({
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => {
                 haptics.tap();
                 onChange(tab.id);

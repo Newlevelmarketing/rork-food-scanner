@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { JSX } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   DateStrip,
@@ -49,6 +49,7 @@ export function Home({
   const store = useAppStore();
   const t = useT();
   const [page, setPage] = useState<0 | 1>(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const [waterPulse, setWaterPulse] = useState<boolean>(false);
   const [isSharing, setIsSharing] = useState<boolean>(false);
 
@@ -241,11 +242,20 @@ export function Home({
 
       {/* Macro / insights carousel */}
       <div className="mt-4 flex flex-col gap-[10px]">
-        <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto">
-          <div
-            className="w-full shrink-0 snap-center px-5"
-            onFocus={() => setPage(0)}
-          >
+        {/* The dots used to be driven by an onFocus on the first panel - the only
+            value `page` could already hold - so they never moved off page 0 no
+            matter which panel was on screen. Derive it from the scroll instead. */}
+        <div
+          ref={carouselRef}
+          onScroll={() => {
+            const node = carouselRef.current;
+            if (node === null || node.clientWidth === 0) return;
+            const index = Math.round(node.scrollLeft / node.clientWidth);
+            setPage(index <= 0 ? 0 : 1);
+          }}
+          className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto"
+        >
+          <div className="w-full shrink-0 snap-center px-5">
             <div className="flex gap-3">
               <MacroTile
                 title={t("h.protein")}
@@ -301,7 +311,8 @@ export function Home({
           </div>
         </div>
 
-        <div className="flex justify-center gap-[6px]">
+        {/* Decorative: the position is already conveyed by the scroll container. */}
+        <div aria-hidden="true" className="flex justify-center gap-[6px]">
           {[0, 1].map((index) => (
             <span
               key={index}
