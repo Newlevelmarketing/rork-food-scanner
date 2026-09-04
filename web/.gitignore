@@ -6,7 +6,11 @@ dist
 dist-ssr
 
 # env
+# Every variant, because a mode-specific file holding GEMINI_API_KEY would
+# otherwise be committed - `.env` alone did not match `.env.production`.
 .env
+.env.*
+!.env.example
 *.local
 
 # Native

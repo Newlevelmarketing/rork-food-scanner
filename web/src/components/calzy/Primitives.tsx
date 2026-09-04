@@ -37,6 +37,8 @@ export function AnimatedNumber({
   duration?: number;
 }): JSX.Element {
   const [display, setDisplay] = useState<number>(value);
+  /** What is actually on screen right now, which state alone cannot tell us in a cleanup. */
+  const displayRef = useRef<number>(value);
   const fromRef = useRef<number>(value);
   const frameRef = useRef<number | null>(null);
 
@@ -49,18 +51,25 @@ export function AnimatedNumber({
       const t = Math.min(1, (now - start) / duration);
       // easeOutExpo — feels like SwiftUI's numericText spring.
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-      setDisplay(Math.round(from + (value - from) * eased));
+      const next = Math.round(from + (value - from) * eased);
+      displayRef.current = next;
+      setDisplay(next);
       if (t < 1) {
         frameRef.current = requestAnimationFrame(tick);
       } else {
         fromRef.current = value;
+        displayRef.current = value;
       }
     };
 
     frameRef.current = requestAnimationFrame(tick);
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-      fromRef.current = value;
+      // Resume from what the user can see, not from the target this animation
+      // never reached. Storing `value` here meant an interrupted roll-up - a
+      // second edit mid-animation - restarted from a number that was never on
+      // screen, so the counter visibly snapped.
+      fromRef.current = displayRef.current;
     };
   }, [value, duration]);
 

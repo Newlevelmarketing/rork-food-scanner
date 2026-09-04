@@ -95,6 +95,29 @@ be hard to attribute.
 
 ## Recently Completed
 
+**Unit 29 — Stale UI state and silent failures** (`29-web-state-and-feedback.md`) — **verified.**
+
+Four findings where the UI showed something stale or failed without saying so: a progress-photo
+import that did **nothing at all** on an unreadable file (and produced an unhandled rejection on a
+throw), a `ShareSummary` error that stuck across every later open, `AnimatedNumber` snapping when a
+roll-up was interrupted because the cleanup stored the target rather than the rendered value, and
+`.env.production` not being gitignored — `.env` and `*.local` match neither it nor
+`.env.development`, so a file holding `GEMINI_API_KEY` would have been committed.
+
+Verified by feeding the photo input a `.png` containing five bytes of junk: the alert now appears
+where the picker previously did nothing.
+
+**Two things left open deliberately, both worth deciding on:**
+
+1. **`/privacy` and `/terms` hotlink a Google-hosted webfont**, so Google sees the IP of anyone
+   reading the privacy policy — which sits oddly against what that policy says. Fixing it means
+   committing font files, an assets decision rather than a code fix.
+2. **Large parts of the UI bypass the 32-locale catalogue.** `Progress.tsx` alone hardcodes
+   "Progress", "Progress Photos", "Body metrics" and more. `context/execution-standards.md` requires
+   shipped copy to reach all 32 locales; this is a standing violation, **bigger than any single
+   audit finding and not on the audit's list at all.**
+
+
 **Unit 28 — Sheet dialog semantics and focus management**
 (`28-sheet-dialog-semantics.md`) — **verified in the running app.**
 

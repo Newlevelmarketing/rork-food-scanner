@@ -32,7 +32,12 @@ export function ShareSummary({
 
   useEffect(() => {
     if (!open) {
+      // The component stays mounted, so anything left here survives a close.
+      // Only `ready` was reset, which meant a one-time failure greeted the user
+      // on every later open, above a card that had rendered perfectly well.
       setReady(false);
+      setBusy(false);
+      setError(null);
       return;
     }
 

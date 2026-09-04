@@ -58,6 +58,8 @@ export function Progress(): JSX.Element {
   const [journalMonth, setJournalMonth] = useState<Date>(() => new Date());
   const [trendRange, setTrendRange] = useState<TrendRange>("week");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState<boolean>(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const weightDelta = profile.currentWeightKg - profile.startWeightKg;
   const deltaColor =
@@ -94,12 +96,32 @@ export function Progress(): JSX.Element {
   const values = trendEntries.map((entry) => entry.kilograms);
   const change = (values.length > 0 ? values[values.length - 1] : 0) - (values[0] ?? 0);
 
+  /**
+   * Imports a progress photo.
+   *
+   * Previously this awaited `toThumbnail` and returned silently when it produced
+   * nothing, with no error shown and no pending state - and because the caller
+   * invokes it with `void`, a throw became an unhandled rejection. Picking an
+   * unreadable file simply did nothing at all, which reads as the app being
+   * broken.
+   */
   const onPickPhoto = async (file: File | undefined): Promise<void> => {
     if (!file) return;
-    const thumbnail = await toThumbnail(file, 620);
-    if (!thumbnail) return;
-    store.addProgressPhoto(thumbnail);
-    haptics.success();
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      const thumbnail = await toThumbnail(file, 620);
+      if (!thumbnail) {
+        setPhotoError("We couldn't read that image. Try a different photo.");
+        return;
+      }
+      store.addProgressPhoto(thumbnail);
+      haptics.success();
+    } catch {
+      setPhotoError("We couldn't read that image. Try a different photo.");
+    } finally {
+      setPhotoBusy(false);
+    }
   };
 
   return (
@@ -409,9 +431,10 @@ export function Progress(): JSX.Element {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="pressable flex items-center gap-1 text-[14px] font-semibold text-ink"
+            disabled={photoBusy}
+            className="pressable flex items-center gap-1 text-[14px] font-semibold text-ink disabled:opacity-50"
           >
-            <Plus size={15} strokeWidth={3} /> Add
+            <Plus size={15} strokeWidth={3} /> {photoBusy ? "Adding…" : "Add"}
           </button>
           <input
             ref={fileRef}
@@ -424,6 +447,14 @@ export function Progress(): JSX.Element {
             }}
           />
         </div>
+
+        {photoError !== null && (
+          <div className="px-5">
+            <p role="alert" className="text-[13px] font-medium text-protein">
+              {photoError}
+            </p>
+          </div>
+        )}
 
         {store.photos.length === 0 ? (
           <div className="px-5">
