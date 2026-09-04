@@ -130,9 +130,11 @@ export function Settings(): JSX.Element {
           </div>
         </Section>
 
-        {/* Subscriptions are sold in the iOS and Android apps only. The web build
-            intentionally has no purchase flow: billing runs through RevenueCat on
-            the native stores, so this row reports status and never sells. */}
+        {/* Subscriptions are sold in the iOS app only - Android ships no billing
+            code at all, so naming it here would send people to a store listing
+            that cannot sell them anything. The web build intentionally has no
+            purchase flow: billing runs through RevenueCat on the App Store, so
+            this row reports status and never sells. */}
         <Section title={t("s.subscription")}>
           <div className="flex w-full items-center gap-[13px] p-[14px] text-left">
             <span
@@ -154,8 +156,8 @@ export function Settings(): JSX.Element {
               </span>
               <span className="block text-[12px] text-ink-faint">
                 {profile.isPro
-                  ? "Unlimited scans and insights"
-                  : "Available in the ModernBody iOS and Android apps"}
+                  ? "Your subscription is active"
+                  : "Available in the ModernBody iOS app"}
               </span>
             </span>
           </div>

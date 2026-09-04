@@ -18,6 +18,52 @@ Every important decision should include:
 
 ## Decisions
 
+### 2026-09-05 — Flagged, not decided: the iOS subscription unlocks nothing
+
+**Status:** **Open — needs a human decision.** Blocks App Store submission.
+
+This is the 2026-08-20 paywall finding again, on a different platform, with real money
+attached. That entry was closed by deleting the web and Android paywalls. iOS then gained a
+real RevenueCat purchase flow, and the same defect arrived with it.
+
+**What ships:** `PurchaseManager.swift` sells ModernBody Pro as an auto-renewing subscription
+in weekly, monthly and yearly terms, entitlement `premium`, through RevenueCat. The flow is
+real — `Purchases.shared.purchase(package:)` charges the user's Apple Account. It is reachable
+in a release build whenever `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` is non-empty at compile time.
+
+**What a subscriber gets: nothing.** `isSubscribed` is read in exactly three places in the
+entire iOS target, and none of them is a feature gate:
+
+| Site | Use |
+| --- | --- |
+| `PaywallView.swift:67` | Dismiss the sheet after a successful purchase |
+| `SettingsView.swift:150` | Badge text, ACTIVE vs UPGRADE |
+| `SettingsView.swift:156` | Badge colour |
+
+**What the paywall advertises** (`PaywallView.swift:95,105-107`):
+
+| Advertised | Reality |
+| --- | --- |
+| "Unlimited scans — Photograph every plate, no daily cap" | No scan cap exists on any platform; every `cap` match in the target is a `lineCap` stroke style |
+| "Deeper insights — Weekly trends, macro balance coaching" | `ProgressDashboardView` never reads `isSubscribed` |
+| "All 32 languages — AI answers in the language you choose" | Language selection is not gated |
+| "every future feature — day one" | Not a present benefit |
+
+**Why it matters:** Guideline 3.1.1 and 2.3.1 — charging for functionality the user already
+has, and advertising benefits the binary does not deliver. Apple has already rejected this app
+once and cited 3.1.2. Independently of any store rule, it takes recurring money for nothing.
+
+**Options:** (a) gate real functionality behind `premium` before submitting; (b) ship without
+the RevenueCat key injected, which hides the Pro entry point in release builds and defers the
+question; (c) rewrite the paywall to advertise only what Pro actually delivers — which today is
+nothing, so this is not viable on its own.
+
+**Not decided here.** The legal and submission copy has been corrected to state accurately that
+a subscription exists; that fix stands on its own and is independent of which option is taken.
+Accurate copy about a product that gives nothing back does not make the product shippable.
+
+---
+
 ### 2026-08-20 — Adopt the Project Brain for this existing app
 
 **Decision:** Manage this existing application through a spec-driven Project Brain: context

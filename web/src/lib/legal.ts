@@ -49,7 +49,7 @@ export const wellnessDisclaimer =
 
 export const privacyPolicy: LegalDocument = {
   title: "Privacy Policy",
-  lastUpdated: "18 August 2026",
+  lastUpdated: "5 September 2026",
   blocks: [
     { kind: "heading", text: "Summary" },
     {
@@ -95,13 +95,27 @@ export const privacyPolicy: LegalDocument = {
       text: "Photos submitted for analysis are processed to generate the estimate and are not used by us to build a user profile or to train models. The photo that appears in your meal history is a separate copy stored on your device.",
     },
 
-    { kind: "heading", text: "3. Information we do not collect" },
+    { kind: "heading", text: "3. Subscriptions and purchases" },
     {
       kind: "paragraph",
-      text: "We do not collect or process: contacts, precise or coarse location, health records, advertising identifiers, browsing history, crash telemetry or usage analytics. ModernBody contains no third-party analytics, attribution or advertising SDKs, and performs no tracking across apps or websites.",
+      text: "ModernBody Pro is optional. If you buy it, the transaction is handled by the app store you bought it from and by our subscription provider, RevenueCat, which validates the purchase and tells the app whether your subscription is active.",
+    },
+    {
+      kind: "paragraph",
+      text: "RevenueCat receives a randomly generated, anonymous app user identifier together with the store purchase receipt. It does not receive your name, email address, meals, photos, weight or any other content from the app. We never see or store your payment card details; those remain with the app store.",
+    },
+    {
+      kind: "paragraph",
+      text: "If you never subscribe, no purchase data is created and nothing is sent to RevenueCat. The web version of ModernBody has no purchase flow, so nothing you do on this site can create purchase data.",
     },
 
-    { kind: "heading", text: "4. Permissions" },
+    { kind: "heading", text: "4. Information we do not collect" },
+    {
+      kind: "paragraph",
+      text: "We do not collect or process: contacts, precise or coarse location, health records, advertising identifiers, browsing history, crash telemetry or usage analytics. Apart from the subscription provider described in section 3, ModernBody contains no third-party analytics, attribution or advertising SDKs, and performs no tracking across apps or websites.",
+    },
+
+    { kind: "heading", text: "5. Permissions" },
     {
       kind: "bullets",
       items: [
@@ -115,19 +129,23 @@ export const privacyPolicy: LegalDocument = {
       text: "Each permission is requested at the moment the feature is first used, never at launch.",
     },
 
-    { kind: "heading", text: "5. Your control and deletion" },
+    { kind: "heading", text: "6. Your control and deletion" },
     {
       kind: "paragraph",
       text: "You can delete individual meals, exercises, weights and photos at any time. Settings › Delete All Data permanently removes every entry, photo and profile detail from the device and returns the app to its first-run state. Deleting the app from your device also destroys all of its stored data. Because we hold no server-side copy and no account, there is nothing for us to delete on your behalf.",
     },
+    {
+      kind: "paragraph",
+      text: "Deleting your data, or deleting the app, does not cancel a subscription. Manage or cancel a subscription in your app store account settings.",
+    },
 
-    { kind: "heading", text: "6. Children" },
+    { kind: "heading", text: "7. Children" },
     {
       kind: "paragraph",
       text: "ModernBody is intended for general adult consumers and is not directed at children under 13.",
     },
 
-    { kind: "heading", text: "7. Changes" },
+    { kind: "heading", text: "8. Changes" },
     {
       kind: "paragraph",
       text: "If this policy changes materially, the updated text will ship with a new version of the app and the date above will be revised.",
@@ -137,7 +155,7 @@ export const privacyPolicy: LegalDocument = {
 
 export const termsOfUse: LegalDocument = {
   title: "Terms of Use",
-  lastUpdated: "18 August 2026",
+  lastUpdated: "5 September 2026",
   blocks: [
     { kind: "heading", text: "1. Acceptance" },
     {
@@ -172,10 +190,26 @@ export const termsOfUse: LegalDocument = {
       text: "ModernBody has no social features. There are no public profiles, feeds, comments, messaging, sharing between users or any other mechanism by which content you create becomes visible to another person inside the app. Meal names and descriptions you type are stored on your device only.",
     },
 
-    { kind: "heading", text: "7. Price" },
+    { kind: "heading", text: "7. Subscriptions and billing" },
     {
       kind: "paragraph",
-      text: "This version of ModernBody is provided in full at no charge. It contains no in-app purchases and no subscriptions.",
+      text: "ModernBody Pro is an optional auto-renewing subscription, offered in weekly, monthly and yearly terms. It is sold inside the ModernBody mobile app. This website has no purchase flow; nothing can be bought here.",
+    },
+    {
+      kind: "paragraph",
+      text: "The exact price, billing period and currency of each term are shown in your local currency on the subscription screen inside the app before you confirm any purchase. Prices may differ by region and may change over time; any change is shown to you before it applies.",
+    },
+    {
+      kind: "paragraph",
+      text: "Payment is charged to your app store account when you confirm the purchase. A subscription renews automatically for the same term unless you turn off auto-renew at least 24 hours before the end of the current period. Your account is charged for the renewal within 24 hours before the end of the current period.",
+    },
+    {
+      kind: "paragraph",
+      text: "You can view, manage and cancel your subscription, including turning off auto-renew, in your app store account settings. Deleting ModernBody does not cancel a subscription.",
+    },
+    {
+      kind: "paragraph",
+      text: "Where a free trial or introductory offer is provided, any unused portion is forfeited when you purchase a subscription. Refunds are handled by the app store you purchased from, under its refund policy.",
     },
 
     { kind: "heading", text: "8. Disclaimer of warranties" },

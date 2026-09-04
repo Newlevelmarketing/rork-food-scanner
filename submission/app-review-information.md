@@ -83,8 +83,13 @@ this is exactly the claim Apple spot-checks.
 > app returns "We couldn't find any food in that photo", which is expected behaviour rather than
 > an error.
 >
-> **No paid content.** This version contains no in-app purchases and no subscriptions. Every
-> feature is available at no charge. This is stated in section 7 of the in-app Terms of Use.
+> **In-app purchases.** ModernBody Pro is an optional auto-renewing subscription, offered in
+> weekly, monthly and yearly terms and sold through the App Store. Purchases are validated by
+> RevenueCat. The subscription screen is reached from the **Settings** tab → **ModernBody Pro**,
+> and shows the price, billing period and currency of each term in the reviewer's local currency
+> before any purchase is confirmed. Auto-renewal, cancellation and refund handling are stated in
+> section 7 of the in-app Terms of Use. Every feature listed in the walkthrough above works
+> without a subscription.
 >
 > **No user-generated content platform.** There are no profiles, feeds, comments, messaging or
 > any mechanism by which one user's content becomes visible to another. Meal names and notes are
@@ -102,7 +107,8 @@ this is exactly the claim Apple spot-checks.
 
 ### 5. External services, tools and platforms
 
-> ModernBody uses exactly one external service, and only for meal analysis.
+> ModernBody uses two external services: one for meal analysis, and one to validate subscription
+> purchases.
 >
 > **AI nutrition estimation.** When the user scans a photo or describes a meal, that single
 > image or text string is sent over HTTPS to an AI gateway operated by Rork
@@ -118,8 +124,16 @@ this is exactly the claim Apple spot-checks.
 > **What is not transmitted:** name, email, device identifier, profile, weight, meal history, or
 > any account information — the app has no account system and no other network calls.
 >
+> **Subscription validation.** If the user buys ModernBody Pro, the transaction is handled by
+> Apple and validated by RevenueCat, which tells the app whether the subscription is active.
+> RevenueCat receives a randomly generated, anonymous app user identifier together with the App
+> Store purchase receipt. It does not receive the user's name, email address, meals, photos,
+> weight or any other content from the app. Payment card details remain with Apple and are never
+> seen by the app. If the user never subscribes, no purchase data is created and nothing is sent
+> to RevenueCat.
+>
 > The app integrates **no** analytics, attribution, advertising, crash-reporting or tracking
-> SDKs, and no authentication or payment providers.
+> SDKs, and no authentication provider.
 >
 > The only other network request is a Google Fonts stylesheet used by the web build; the iOS app
 > bundles its fonts. **`[CONFIRM]`** — verify this before sending if the iOS build differs.
