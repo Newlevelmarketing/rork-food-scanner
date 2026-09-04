@@ -168,7 +168,7 @@ export function ScanSheet({
   };
 
   return (
-    <FullScreenSheet open={open} onClose={onClose} dark bare>
+    <FullScreenSheet open={open} onClose={onClose} dark bare label="Meal scanner">
       <div className="relative h-full w-full bg-black">
         <video
           ref={videoRef}

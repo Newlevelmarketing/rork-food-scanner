@@ -95,6 +95,30 @@ be hard to attribute.
 
 ## Recently Completed
 
+**Unit 28 — Sheet dialog semantics and focus management**
+(`28-sheet-dialog-semantics.md`) — **verified in the running app.**
+
+The sheets are the app's primary navigation surface — scan, describe, search, saved, exercise,
+meal detail, edit, paywall, share, every settings screen — so this covers most of the product.
+
+`FullScreenSheet` rendered a plain `<div>`: no `role`, no `aria-modal`, no accessible name.
+Background UI stayed **mounted and tabbable** with nothing moving focus into the sheet, so the first
+Tab landed behind the overlay — a user could tab through a screen they could not see and activate
+controls hidden under a modal. Nothing restored focus on close either.
+
+Separately, each sheet registered its own *window* keydown listener with no top-most check, and
+sheets stack, so **one Escape closed two** — dropping the user from the calorie edit past the meal
+detail to the timeline.
+
+Now: `role="dialog"`, `aria-modal`, an accessible name (with a `label` prop for `bare` sheets), a
+module-level stack so only the top-most answers Escape, a Tab trap in both directions, and focus
+restored to the triggering element.
+
+**Verified with two sheets stacked:** labels `["Lunch", "Edit meal"]`, one Escape closes only the
+edit, a second closes the detail, Tab wraps forward and Shift+Tab backward across a real 10-element
+list, and focus returns to the exact trigger button.
+
+
 **Unit 27 — Android: losing work, and the empty-key error**
 (`27-android-audit-fixes-two.md`) — **UNVERIFIED, needs a Gradle build.**
 
